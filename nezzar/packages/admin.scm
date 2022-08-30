@@ -36,8 +36,7 @@
 	     (let ((out (assoc-ref outputs "out")))
                (setenv "CC" ,(cc-for-target))
 	       (setenv "DESTDIR" out)
-	       (invoke "./configure"
-		       (string-append "--prefix=" out))))))))
+	       (invoke "./configure")))))))
     (inputs `(,linux-pam))
     (native-inputs `(,perl))		;for pod2man
     (home-page "https://jjacky.com/pam_rundir/")
