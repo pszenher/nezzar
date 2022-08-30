@@ -1,11 +1,11 @@
 (define-module (nezzar packages admin)
-  #:use-module ((guix packages) #:hide (search-patches))
+  #:use-module (guix packages)
   #:use-module (nezzar packages)
   #:use-module (guix utils)
   #:use-module (guix download)
   #:use-module (guix build-system gnu)
   #:use-module ((guix licenses) :prefix license:)
-  #:use-module (gnu packages)
+  #:use-module ((gnu packages) #:hide (search-patches))
   #:use-module (gnu packages linux)
   #:use-module (gnu packages perl))
 
