@@ -22,8 +22,8 @@
 	(search-patches "pam-rundir-use-prctl-to-bypass-perms-check-on-mkdir.patch"
 			"pam-rundir-fix-equal-bug-pr5.patch"
 			"pam-rundir-fix-group-of-user-dir.patch"
-			"pam-rundir-configure-default-to-run-user.patch")))
-     (sha256
+			"pam-rundir-configure-default-to-run-user.patch"))
+       (sha256
 	(base32
 	 "0860phkpmy25xvx3hqf9ydbyjprrxmkpyyx8vcxplxr3xncvcyf7"))))
     (build-system gnu-build-system)
