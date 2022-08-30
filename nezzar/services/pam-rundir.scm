@@ -2,6 +2,7 @@
   #:use-module (nezzar packages admin)
   #:use-module (gnu services)
   #:use-module (gnu system pam)
+  #:use-module (guix gexp)
   #:export (pam-rundir-service-type))
 
 (define (pam-rundir-pam-service config)
