@@ -95,7 +95,7 @@
 
 (define pipewire-environment
   (lambda (config)
-    '(("PIPEWIRE_CONFIG_DIR"  . (pipewire-configuration-config-dir config)))))
+    `(("PIPEWIRE_CONFIG_DIR"  . ,(pipewire-configuration-config-dir config)))))
 
 (define pipewire-etc
   (lambda (config)
