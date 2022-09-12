@@ -6,49 +6,75 @@
   #:use-module (gnu services configuration)
   #:use-module (gnu services shepherd)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages guile)
   #:use-module (gnu system pam)
   #:use-module (ice-9 match)
   #:use-module (json)
 
   #:export (pipewire-service-type
 	    pipewire-configuration
-	    pipewire-sub-configuration))
+
+	    pipewire-client-configuration
+	    pipewire-daemon-configuration
+	    pipewire-pulse-configuration
+	    pipewire-jack-configuration
+
+	    ;; pipewire-configuration-client-config
+	    ;; pipewire-configuration-daemon-config
+	    ;; pipewire-configuration-pulse-config
+	    ;; pipewire-configuration-jack-config
+
+	    serialize-alist
+	    serialize-file-like))
 
 (define pipewire-default-package pipewire-0.3)
 
+(define-maybe alist)
+
 (define (serialize-alist field-name value)
-  #~(if #$value (scm->json-string
-		 #$value
-		 #:unicode #t
-		 #:pretty #t)
-	""))
-  
-(define-configuration pipewire-sub-configuration
-  (file  (file-like)
-	 "Filename of target pipewire configuration file.")
-  (extra (alist '())
-	 "Additional pipewire configuration in s-exp format"))
-
-;; (define (serialize-pipewire-sub-configuration field-name value)
-;;   #~(case #$field-name
-;;       (("file") (begin (use-modules (ice-9 textual-ports))
-;; 		       (call-with-input-file #$value get-string-all)))
-;;       (("extra") #$value)))
-  
-;; (define (serialize-pipewire-configuration configuration)
-;;     (mixed-text-file
-;;      #~(let ((file-name (case #$field-name
-;; 			  (("client-config") "client.conf")
-;; 			  (("daemon-config") "pipewire.conf")
-;; 			  (("pulse-config")  "pipewire-pulse.conf")
-;; 			  (("jack-config")   "jack.conf")))))))
-
-;; (define (serialize-string field-name value) #~value)
+  (if (null? (quote value))
+      ""
+      (scm->json-string
+       value
+       #:unicode #t
+       #:pretty #t)))
 
 (define (serialize-file-like field-name value)
   #~(begin
       (use-modules (ice-9 textual-ports))
       (call-with-input-file #$value get-string-all)))
+
+(define-configuration pipewire-client-configuration
+  (file  (file-like (file-append
+		     pipewire-default-package
+		     "/share/pipewire/client.conf"))
+	 "Filename of target pipewire client configuration file.")
+  (extra maybe-alist
+	 "Additional pipewire client configuration in s-exp format"))
+
+(define-configuration pipewire-daemon-configuration
+  (file  (file-like (file-append
+		     pipewire-default-package
+		     "/share/pipewire/pipewire.conf"))
+	 "Filename of target pipewire daemon configuration file.")
+  (extra maybe-alist
+	 "Additional pipewire daemon configuration in s-exp format"))
+
+(define-configuration pipewire-pulse-configuration
+  (file  (file-like (file-append
+		     pipewire-default-package
+		     "/share/pipewire/pipewire-pulse.conf"))
+	 "Filename of target pipewire pulse configuration file.")
+  (extra maybe-alist
+	 "Additional pipewire pulseconfiguration in s-exp format"))
+
+(define-configuration pipewire-jack-configuration
+  (file  (file-like (file-append
+		     pipewire-default-package
+		     "/share/pipewire/jack.conf"))
+	 "Filename of target pipewire jack configuration file.")
+  (extra maybe-alist
+	 "Additional pipewire jack configuration in s-exp format"))
 
 (define-configuration/no-serialization pipewire-configuration
   (package
@@ -56,25 +82,13 @@
     "PipeWire package to use.")
   (config-dir (string "/etc/pipewire/")
 	      "System directory wherein PipeWire configuration files are stored")
-  (client-config (pipewire-sub-configuration
-		  (pipewire-sub-configuration
-		   (file (file-append pipewire-default-package
-				      "/share/pipewire/client.conf"))))
+  (client-config (pipewire-client-configuration (pipewire-client-configuration))
 		 "Configuration for PipeWire clients.")
-  (daemon-config (pipewire-sub-configuration
-		  (pipewire-sub-configuration
-		   (file (file-append pipewire-default-package
-				      "/share/pipewire/pipewire.conf"))))
+  (daemon-config (pipewire-daemon-configuration (pipewire-daemon-configuration))
 		 "Configuration for the PipeWire system daemon.")
-  (pulse-config (pipewire-sub-configuration
-		 (pipewire-sub-configuration
-		  (file (file-append pipewire-default-package
-				     "/share/pipewire/pipewire-pulse.conf"))))
+  (pulse-config (pipewire-pulse-configuration (pipewire-pulse-configuration))
 		"Configuration for the PulseAudio PipeWire support.")
-  (jack-config (pipewire-sub-configuration
-		(pipewire-sub-configuration
-		 (file (file-append pipewire-default-package
-				    "/share/pipewire/jack.conf"))))
+  (jack-config (pipewire-jack-configuration (pipewire-jack-configuration))
 	       "Configuration for the JACK PipeWire support."))
 
 (define pipewire-environment
@@ -92,22 +106,22 @@
 	    ,(mixed-text-file
 	      "client.conf" (serialize-configuration
 			     (pipewire-configuration-client-config config)
-			     pipewire-sub-configuration-fields)))
+			     pipewire-client-configuration-fields)))
 	   ("daemon.conf"
 	    ,(mixed-text-file
 	      "pipewire.conf" (serialize-configuration
 			       (pipewire-configuration-daemon-config config)
-			       pipewire-sub-configuration-fields)))
+			       pipewire-daemon-configuration-fields)))
 	   ("pipewire-pulse.conf"
 	    ,(mixed-text-file
 	      "pipewire-pulse.conf" (serialize-configuration
 				     (pipewire-configuration-pulse-config config)
-				     pipewire-sub-configuration-fields)))
+				     pipewire-pulse-configuration-fields)))
 	   ("jack.conf"
 	    ,(mixed-text-file
 	      "jack.conf" (serialize-configuration
 			   (pipewire-configuration-jack-config config)
-			   pipewire-sub-configuration-fields)))))))))
+			   pipewire-jack-configuration-fields)))))))))
 
 (define pipewire-udev
   (match-lambda
