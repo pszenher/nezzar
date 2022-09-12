@@ -17,11 +17,11 @@
 (define pipewire-default-package pipewire-0.3)
 
 (define (serialize-alist field-name value)
-  (if value (scm->json-string
-	     value
-	     #:unicode #t
-	     #:pretty #t)
-      ""))
+  #~(if #$value (scm->json-string
+		 #$value
+		 #:unicode #t
+		 #:pretty #t)
+	""))
   
 (define-configuration pipewire-sub-configuration
   (file  (file-like)
