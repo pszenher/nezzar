@@ -1,5 +1,4 @@
 (define-module (nezzar services sound)
-  #:use-module (nezzar serializers json)
   #:use-module (guix packages)
   #:use-module (guix gexp)
   #:use-module (gnu services)
@@ -9,6 +8,7 @@
   #:use-module (gnu packages linux)
   #:use-module (gnu system pam)
   #:use-module (ice-9 match)
+  #:use-module (json)
 
   #:export (pipewire-service-type
 	    pipewire-configuration
@@ -16,10 +16,17 @@
 
 (define pipewire-default-package pipewire-0.3)
 
+(define (serialize-alist field-name value)
+  (if value (scm->json-string
+	     value
+	     #:unicode #t
+	     #:pretty #t)
+      ""))
+  
 (define-configuration pipewire-sub-configuration
   (file  (file-like)
 	 "Filename of target pipewire configuration file.")
-  (extra (json-config '())
+  (extra (alist '())
 	 "Additional pipewire configuration in s-exp format"))
 
 ;; (define (serialize-pipewire-sub-configuration field-name value)
