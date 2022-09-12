@@ -22,10 +22,28 @@
   (extra (json-config '())
 	 "Additional pipewire configuration in s-exp format"))
 
-(define (serialize-pipewire-sub-configuration field-name value) #~value)
-(define (serialize-string field-name value) #~value)
+;; (define (serialize-pipewire-sub-configuration field-name value)
+;;   #~(case #$field-name
+;;       (("file") (begin (use-modules (ice-9 textual-ports))
+;; 		       (call-with-input-file #$value get-string-all)))
+;;       (("extra") #$value)))
+  
+;; (define (serialize-pipewire-configuration configuration)
+;;     (mixed-text-file
+;;      #~(let ((file-name (case #$field-name
+;; 			  (("client-config") "client.conf")
+;; 			  (("daemon-config") "pipewire.conf")
+;; 			  (("pulse-config")  "pipewire-pulse.conf")
+;; 			  (("jack-config")   "jack.conf")))))))
 
-(define-configuration pipewire-configuration
+;; (define (serialize-string field-name value) #~value)
+
+(define (serialize-file-like field-name value)
+  #~(begin
+      (use-modules (ice-9 textual-ports))
+      (call-with-input-file #$value get-string-all)))
+
+(define-configuration/no-serialization pipewire-configuration
   (package
     (package pipewire-default-package)
     "PipeWire package to use.")
@@ -52,44 +70,37 @@
 				    "/share/pipewire/jack.conf"))))
 	       "Configuration for the JACK PipeWire support."))
 
-;; #~(let ((file-name (case #$field-name
-;; 		       (("client-config") "client.conf")
-;; 		       (("daemon-config") "pipewire.conf")
-;; 		       (("pulse-config")  "pipewire-pulse.conf")
-;; 		       (("jack-config")   "jack.conf"))))
-
 (define pipewire-environment
-  (match-lambda
-    (($ <pipewire-configuration> config-dir)
-     '(("PIPEWIRE_CONFIG_DIR"  . config-dir)))))
+  (lambda (config)
+    '(("PIPEWIRE_CONFIG_DIR"  . (pipewire-configuration-config-dir config)))))
 
 (define pipewire-etc
-  (match-lambda
-    (($ <pipewire-configuration> client-config daemon-config
-				 pulse-config jack-config)
-     `(("pipewire"
-	,(file-union
-	  "pipewire"
-	  `(("client.conf"
-	     ,(mixed-text-file
-	       "client.conf" (serialize-configuration
-			      client-config
-			      pipewire-sub-configuration-fields)))
-	    ("daemon.conf"
-	     ,(mixed-text-file
-	       "pipewire.conf" (serialize-configuration
-				daemon-config
-				pipewire-sub-configuration-fields)))
-	    ("pipewire-pulse.conf"
-	     ,(mixed-text-file
-	       "pipewire-pulse.conf" (serialize-configuration
-				      pulse-config
-				      pipewire-sub-configuration-fields)))
-	    ("jack.conf"
-	     ,(mixed-text-file
-	       "jack.conf" (serialize-configuration
-			    jack-config
-			    pipewire-sub-configuration-fields))))))))))
+  (lambda (config)
+    ;; (($ <pipewire-configuration> client-config daemon-config
+    ;; 				 pulse-config jack-config)
+    `(("pipewire"
+       ,(file-union
+	 "pipewire"
+	 `(("client.conf"
+	    ,(mixed-text-file
+	      "client.conf" (serialize-configuration
+			     (pipewire-configuration-client-config config)
+			     pipewire-sub-configuration-fields)))
+	   ("daemon.conf"
+	    ,(mixed-text-file
+	      "pipewire.conf" (serialize-configuration
+			       (pipewire-configuration-daemon-config config)
+			       pipewire-sub-configuration-fields)))
+	   ("pipewire-pulse.conf"
+	    ,(mixed-text-file
+	      "pipewire-pulse.conf" (serialize-configuration
+				     (pipewire-configuration-pulse-config config)
+				     pipewire-sub-configuration-fields)))
+	   ("jack.conf"
+	    ,(mixed-text-file
+	      "jack.conf" (serialize-configuration
+			   (pipewire-configuration-jack-config config)
+			   pipewire-sub-configuration-fields)))))))))
 
 (define pipewire-udev
   (match-lambda
