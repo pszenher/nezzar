@@ -27,6 +27,8 @@
 	    serialize-alist
 	    serialize-file-like))
 
+;; TODO: this should be read from 'package' field of <pipewire-configuration>
+;;       instead of hard-coding
 (define pipewire-default-package pipewire-0.3)
 
 (define-maybe alist)
@@ -136,7 +138,8 @@
 			     pipewire-environment)
 	  (service-extension etc-service-type
 			     pipewire-etc)
-	  (service-extension udev-service-type
-			     pipewire-udev)))
+	  ;; (service-extension udev-service-type
+	  ;; 		     pipewire-udev)
+	  ))
    (default-value (pipewire-configuration))
    (description "Configure PipeWire sound support.")))
