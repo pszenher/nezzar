@@ -8,7 +8,11 @@
   #:use-module (gnu services shepherd)
   #:use-module (gnu packages linux)
   #:use-module (gnu system pam)
-  #:use-module (ice-9 match))
+  #:use-module (ice-9 match)
+
+  #:export (pipewire-service-type
+	    pipewire-configuration
+	    pipewire-sub-configuration))
 
 (define pipewire-default-package pipewire-0.3)
 
