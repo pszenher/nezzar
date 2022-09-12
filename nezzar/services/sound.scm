@@ -65,7 +65,8 @@
 
 (define pipewire-etc
   (match-lambda
-    (($ <pipewire-configuration> client-conf daemon-conf pulse-conf jack-conf)
+    (($ <pipewire-configuration> client-config daemon-config
+				 pulse-config jack-config)
      `(("pipewire"
 	,(file-union
 	  "pipewire"
