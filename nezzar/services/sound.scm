@@ -1,5 +1,5 @@
 (define-module (nezzar services sound)
-  #:use-module (rde serializers json)
+  #:use-module (nezzar serializers json)
   #:use-module (guix packages)
   #:use-module (guix gexp)
   #:use-module (gnu services)
