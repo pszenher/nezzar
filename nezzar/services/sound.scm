@@ -126,9 +126,8 @@
 			   pipewire-jack-configuration-fields)))))))))
 
 (define pipewire-udev
-  (match-lambda
-    (($ <pipewire-configuration> package)
-     (list package))))
+  (lambda (config)
+    (list (pipewire-configuration-package config))))
 
 (define pipewire-service-type
   (service-type
@@ -138,8 +137,7 @@
 			     pipewire-environment)
 	  (service-extension etc-service-type
 			     pipewire-etc)
-	  ;; (service-extension udev-service-type
-	  ;; 		     pipewire-udev)
-	  ))
+	  (service-extension udev-service-type
+			     pipewire-udev)))
    (default-value (pipewire-configuration))
    (description "Configure PipeWire sound support.")))
