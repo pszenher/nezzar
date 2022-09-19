@@ -46,4 +46,4 @@
 The directory will be created on login (open session) and removed on
 logout (close session), and its full path made available in an
 environment variable, usually $XDG_RUNTIME_DIR.")
-    (license license:gpl2)))
+    (license license:gpl2+)))
