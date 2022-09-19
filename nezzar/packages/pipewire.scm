@@ -13,34 +13,6 @@
   #:use-module (gnu packages crates-gtk)
   #:use-module (gnu packages qt))
 
-
-(define-public qpwgraph
-  (package
-    (name "qpwgraph")
-    (version "0.3.5")
-    (source (origin
-	      (method git-fetch)
-	      (uri (git-reference
-		    (url "https://gitlab.freedesktop.org/rncbc/qpwgraph.git")
-		    (commit (string-append "v" version))))
-	      (sha256
-	       (base32
-		"01f4zabn22dp0yl7szxck6gkbayk1p5iqajfgzls7mdkba7515b6"))))
-    (build-system cmake-build-system)
-    (arguments
-     `(#:tests? #f			; no tests defined
-       #:configure-flags '("-DCONFIG_ALSA_MIDI=OFF")))
-    (native-inputs
-     (list pkg-config))
-    (inputs
-     (list qtbase qtsvg pipewire-0.3))
-    (home-page "https://gitlab.freedesktop.org/rncbc/qpwgraph")
-    (synopsis "PipeWire Graph Qt GUI Interface")
-    (description "qpwgraph is a graph manager dedicated to PipeWire,
-using the Qt C++ framework, based and pretty much like the same of
-QjackCtl.")
-    (license license:gpl2+)))
-
 (define-public wireplumber/no-elogind
   (package
     (inherit wireplumber)
