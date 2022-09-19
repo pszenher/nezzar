@@ -109,7 +109,7 @@
 	      "client.conf" (serialize-configuration
 			     (pipewire-configuration-client-config config)
 			     pipewire-client-configuration-fields)))
-	   ("daemon.conf"
+	   ("pipewire.conf"
 	    ,(mixed-text-file
 	      "pipewire.conf" (serialize-configuration
 			       (pipewire-configuration-daemon-config config)
