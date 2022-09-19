@@ -13,19 +13,10 @@
 
   #:export (pipewire-service-type
 	    pipewire-configuration
-
 	    pipewire-client-configuration
 	    pipewire-daemon-configuration
 	    pipewire-pulse-configuration
-	    pipewire-jack-configuration
-
-	    ;; pipewire-configuration-client-config
-	    ;; pipewire-configuration-daemon-config
-	    ;; pipewire-configuration-pulse-config
-	    ;; pipewire-configuration-jack-config
-
-	    serialize-alist
-	    serialize-file-like))
+	    pipewire-jack-configuration))
 
 ;; TODO: this should be read from 'package' field of <pipewire-configuration>
 ;;       instead of hard-coding
@@ -99,8 +90,6 @@
 
 (define pipewire-etc
   (lambda (config)
-    ;; (($ <pipewire-configuration> client-config daemon-config
-    ;; 				 pulse-config jack-config)
     `(("pipewire"
        ,(file-union
 	 "pipewire"
