@@ -21,6 +21,7 @@
 ;; TODO: this should be read from 'package' field of <pipewire-configuration>
 ;;       instead of hard-coding
 (define pipewire-default-package pipewire-0.3)
+(define wireplumber-default-package wireplumber)
 
 (define-maybe alist)
 
@@ -32,13 +33,19 @@
        #:unicode #t
        #:pretty #t)))
 
-(define (serialize-file-like field-name value)
-  #~(begin
-      (use-modules (ice-9 textual-ports))
-      (call-with-input-file #$value get-string-all)))
+(define (file-like-or-#f? value)
+  (or (file-like? value)
+      (and (boolean? value)
+	   (not      value))))
+
+(define (serialize-file-like-or-#f field-name value)
+  (if (boolean? value) ""
+      #~(begin
+	  (use-modules (ice-9 textual-ports))
+	  (call-with-input-file #$value get-string-all))))
 
 (define-configuration pipewire-client-configuration
-  (file  (file-like (file-append
+  (file  (file-like-or-#f (file-append
 		     pipewire-default-package
 		     "/share/pipewire/client.conf"))
 	 "Filename of target pipewire client configuration file.")
@@ -46,7 +53,7 @@
 	 "Additional pipewire client configuration in s-exp format"))
 
 (define-configuration pipewire-daemon-configuration
-  (file  (file-like (file-append
+  (file  (file-like-or-#f (file-append
 		     pipewire-default-package
 		     "/share/pipewire/pipewire.conf"))
 	 "Filename of target pipewire daemon configuration file.")
@@ -54,7 +61,7 @@
 	 "Additional pipewire daemon configuration in s-exp format"))
 
 (define-configuration pipewire-pulse-configuration
-  (file  (file-like (file-append
+  (file  (file-like-or-#f (file-append
 		     pipewire-default-package
 		     "/share/pipewire/pipewire-pulse.conf"))
 	 "Filename of target pipewire pulse configuration file.")
@@ -62,7 +69,7 @@
 	 "Additional pipewire pulseconfiguration in s-exp format"))
 
 (define-configuration pipewire-jack-configuration
-  (file  (file-like (file-append
+  (file  (file-like-or-#f (file-append
 		     pipewire-default-package
 		     "/share/pipewire/jack.conf"))
 	 "Filename of target pipewire jack configuration file.")
@@ -83,6 +90,15 @@
 		"Configuration for the PulseAudio PipeWire support.")
   (jack-config (pipewire-jack-configuration (pipewire-jack-configuration))
 	       "Configuration for the JACK PipeWire support."))
+
+;; (define-configuration/no-serialization wireplumber-configuration
+;;   (package
+;;     (package wireplumber-default-package)
+;;     "Wireplumber package to use.")
+;;   (config-dir (string "/etc/wireplumber/")
+;; 	      "System directory wherein Wireplumber configuration files are stored")
+;;   (config
+
 
 (define pipewire-environment
   (lambda (config)
