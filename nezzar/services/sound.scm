@@ -172,7 +172,6 @@ options.
 
 
 (define-configuration pipewire-client-configuration
-
   (context.properties
    (alist
     '((log.level . 0)))
@@ -221,10 +220,12 @@ nofail is given, module initialization failures are ignored.
 }")
 
   (filter.properties
-   (alist '()))
+   (alist '())
+   "Properties of pipewire audio filter.")
 
   (stream.properties
-   (alist '()))
+   (alist '())
+   "Properties of pipewire audio stream.")
 
   (extra-config
    maybe-alist
@@ -279,7 +280,8 @@ here.
 { path = <program-name> [ args = \"<arguments>\" ] }")
 
   (stream.properties
-   (alist '()))
+   (alist '())
+   "Properties of pulseaudio audio stream.")
 
   (pulse.properties
    (alist
