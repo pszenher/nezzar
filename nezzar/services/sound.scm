@@ -33,7 +33,8 @@
 		(apply serialize-alist entry))
 	      value))
 	(string-append
-	 field-name-string "=" (scm->json-string value #:pretty #t)))))
+	 field-name-string " = "
+	 (scm->json-string value #:pretty #t) "\n"))))
 
 (define (vector-or-list? value)
   (or (vector? value)
@@ -42,7 +43,8 @@
 (define (serialize-vector-or-list field-name value)
   (let ((value-vector (if (list? value) (list->vector value) value)))
     (string-append
-     (symbol->string field-name) "=" (scm->json-string value-vector #:pretty #t))))
+     (symbol->string field-name) " = "
+     (scm->json-string value-vector #:pretty #t) "\n")))
 
 (define-configuration pipewire-daemon-configuration
   (context.properties
