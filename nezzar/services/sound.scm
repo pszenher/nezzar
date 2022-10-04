@@ -26,24 +26,14 @@
 (define-maybe alist)
 
 (define (serialize-alist field-name value)
-  (if (string=? field-name "extra-config")
-      (string-concatenate
-       (map (lambda (entry)
-	     (apply serialize-alist entry))
-	    value))
-      (string-append
-       field-name "=" (scm->json-string value #:pretty #t))))
-
-;; (define (file-like-or-#f? value)
-;;   (or (file-like? value)
-;;       (and (boolean? value)
-;;	   (not      value))))
-
-;; (define (serialize-file-like-or-#f field-name value)
-;;   (if (boolean? value) ""
-;;       #~(begin
-;;	  (use-modules (ice-9 textual-ports))
-;;	  (call-with-input-file #$value get-string-all))))
+  (let ((field-name-string (symbol->string field-name)))
+    (if (string=? field-name-string "extra-config")
+	(string-concatenate
+	 (map (lambda (entry)
+		(apply serialize-alist entry))
+	      value))
+	(string-append
+	 field-name-string "=" (scm->json-string value #:pretty #t)))))
 
 (define (vector-or-list? value)
   (or (vector? value)
@@ -52,7 +42,7 @@
 (define (serialize-vector-or-list field-name value)
   (let ((value-vector (if (list? value) (list->vector value) value)))
     (string-append
-     field-name "=" (scm->json-string value-vector #:pretty #t))))
+     (symbol->string field-name) "=" (scm->json-string value-vector #:pretty #t))))
 
 (define-configuration pipewire-daemon-configuration
   (context.properties
