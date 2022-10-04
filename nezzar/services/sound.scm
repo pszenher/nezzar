@@ -26,61 +26,349 @@
 (define-maybe alist)
 
 (define (serialize-alist field-name value)
-  (if (null? (quote value))
-      ""
-      (scm->json-string
-       value
-       #:unicode #t
-       #:pretty #t)))
+  (if (string=? field-name "extra-config")
+      (string-concatenate
+       (map (lambda (entry)
+	     (apply serialize-alist entry))
+	    value))
+      (string-append
+       field-name "=" (scm->json-string value #:pretty #t))))
 
-(define (file-like-or-#f? value)
-  (or (file-like? value)
-      (and (boolean? value)
-	   (not      value))))
+;; (define (file-like-or-#f? value)
+;;   (or (file-like? value)
+;;       (and (boolean? value)
+;;	   (not      value))))
 
-(define (serialize-file-like-or-#f field-name value)
-  (if (boolean? value) ""
-      #~(begin
-	  (use-modules (ice-9 textual-ports))
-	  (call-with-input-file #$value get-string-all))))
+;; (define (serialize-file-like-or-#f field-name value)
+;;   (if (boolean? value) ""
+;;       #~(begin
+;;	  (use-modules (ice-9 textual-ports))
+;;	  (call-with-input-file #$value get-string-all))))
 
-(define-configuration pipewire-client-configuration
-  (file  (file-like-or-#f (file-append
-		     pipewire-default-package
-		     "/share/pipewire/client.conf"))
-	 "Filename of target pipewire client configuration file.")
-  (extra maybe-alist
-	 "Additional pipewire client configuration in s-exp format"))
+(define (vector-or-list? value)
+  (or (vector? value)
+      (list?   value)))
+
+(define (serialize-vector-or-list field-name value)
+  (let ((value-vector (if (list? value) (list->vector value) value)))
+    (string-append
+     field-name "=" (scm->json-string value-vector #:pretty #t))))
 
 (define-configuration pipewire-daemon-configuration
-  (file  (file-like-or-#f (file-append
-		     pipewire-default-package
-		     "/share/pipewire/pipewire.conf"))
-	 "Filename of target pipewire daemon configuration file.")
-  (extra maybe-alist
-	 "Additional pipewire daemon configuration in s-exp format"))
+  (context.properties
+   (alist
+    '((link.max-buffers          . 16)
+      (core.daemon               . #t)
+      (core.name                 . pipewire-0)
+      (default.clock.min-quantum . 16)
+      (vm.overrides
+       .
+       ((default.clock.min-quantum . 1024)))))
+   "Configure properties in the system.")
+
+  (context.spa-libs
+   (alist
+    '((audio.convert.* . audioconvert/libspa-audioconvert)
+      (avb.*           . avb/libspa-avb)
+      (api.alsa.*      . alsa/libspa-alsa)
+      (api.v4l2.*      . v4l2/libspa-v4l2)
+      (api.libcamera.* . libcamera/libspa-libcamera)
+      (api.bluez5.*    . bluez5/libspa-bluez5)
+      (api.vulkan.*    . vulkan/libspa-vulkan)
+      (api.jack.*      . jack/libspa-jack)
+      (support.*       . support/libspa-support)))
+   "Used to find spa factory names. It maps an spa factory name regular
+expression to a library name that should contain that factory.
+
+<factory-name regex> = <library-name>")
+
+  (context.modules
+   (vector-or-list
+    '#(((name  . libpipewire-module-rt)
+	(args  . ((nice.level . -11)))
+	(flags . #( ifexists nofail )))
+       ;; The native communication protocol.
+       ((name . libpipewire-module-protocol-native))
+       ;; The profile module. Allows application to access profiler
+       ;; and performance data. It provides an interface that is used
+       ;; by pw-top and pw-profiler.
+       ((name . libpipewire-module-profiler))
+       ;; Allows applications to create metadata objects. It creates
+       ;; a factory for Metadata objects.
+       ((name . libpipewire-module-metadata))
+       ;; Creates a factory for making devices that run in the
+       ;; context of the PipeWire server.
+       ((name . libpipewire-module-spa-device-factory))
+       ;; Creates a factory for making nodes that run in the
+       ;; context of the PipeWire server.
+       ((name . libpipewire-module-spa-node-factory))
+       ;; Allows creating nodes that run in the context of the
+       ;; client. Is used by all clients that want to provide
+       ;; data to PipeWire.
+       ((name . libpipewire-module-client-node))
+       ;; Allows creating devices that run in the context of the
+       ;; client. Is used by the session manager.
+       ((name . libpipewire-module-client-device))
+       ;; The portal module monitors the PID of the portal process
+       ;; and tags connections with the same PID as portal
+       ;; connections.
+       ((name  . libpipewire-module-portal)
+	(flags . #( ifexists nofail )))
+       ;; The access module can perform access checks and block
+       ;; new clients.
+       ((name . libpipewire-module-access))
+       ;; Makes a factory for wrapping nodes in an adapter with a
+       ;; converter and resampler.
+       ((name . libpipewire-module-adapter))
+       ;; Makes a factory for creating links between ports.
+       ((name . libpipewire-module-link-factory))
+       ;; Provides factories to make session manager objects.
+       ((name . libpipewire-module-session-manager))))
+   "Loads a module with the given parameters.
+If ifexists is given, the module is ignored when it is not foun If
+nofail is given, module initialization failures are ignored.
+
+{ name = <module-name>
+    [ args  = { <key> = <value> ... } ]
+    [ flags = [ [ ifexists ] [ nofail ] ] ]
+}")
+
+  (context.objects
+   (vector-or-list
+    '#(;; A default dummy driver. This handles nodes marked with the "node.always-driver"
+       ;; property when no other driver is currently active. JACK clients need this.
+       ((factory . spa-node-factory)
+	(args    . ((factory.name    . support.node.driver)
+		    (node.name       . Dummy-Driver)
+		    (node.group      . pipewire.dummy)
+		    (priority.driver . 20000))))
+       ((factory . spa-node-factory)
+	(args    . ((factory.name    . support.node.driver)
+		    (node.name       . Freewheel-Driver)
+		    (node.group      . pipewire.freewheel)
+		    (priority.driver . 19000)
+		    (node.freewheel  . #t))))))
+   "Creates an object from a PipeWire factory with the given parameters.
+If nofail is given, errors are ignored (and no object is created).
+
+{ factory = <factory-name>
+    [ args  = { <key> = <value> ... } ]
+    [ flags = [ [ nofail ] ] ]
+}")
+
+  (context.exec
+   (vector-or-list '())
+   "Execute the given program with arguments.
+
+You can optionally start the session manager here, but it is better to
+start it as a systemd service.  Run the session manager with -h for
+options.
+
+{ path = <program-name> [ args = \"<arguments>\" ] }")
+
+  (extra-config
+   maybe-alist
+   "Additional pipewire daemon configuration in s-exp format"))
+
+
+(define-configuration pipewire-client-configuration
+
+  (context.properties
+   (alist
+    '((log.level . 0)))
+   "Configure properties in the system.")
+
+  (context.spa-libs
+   (alist
+    '((audio.convert.* . audioconvert/libspa-audioconvert)
+      (support.*       . support/libspa-support)))
+   "Used to find spa factory names. It maps an spa factory name regular
+expression to a library name that should contain that factory.
+
+<factory-name regex> = <library-name>")
+
+  (context.modules
+   (vector-or-list
+    '#(;; The native communication protocol.
+       (( name . libpipewire-module-protocol-native ))
+
+       ;; Allows creating nodes that run in the context of the
+       ;; client. Is used by all clients that want to provide
+       ;; data to PipeWire.
+       (( name . libpipewire-module-client-node ))
+
+       ;; Allows creating devices that run in the context of the
+       ;; client. Is used by the session manager.
+       (( name . libpipewire-module-client-device ))
+
+       ;; Makes a factory for wrapping nodes in an adapter with a
+       ;; converter and resampler.
+       (( name . libpipewire-module-adapter ))
+
+       ;; Allows applications to create metadata objects. It creates
+       ;; a factory for Metadata objects.
+       (( name . libpipewire-module-metadata ))
+
+       ;; Provides factories to make session manager objects.
+       (( name . libpipewire-module-session-manager ))))
+   "Loads a module with the given parameters.
+If ifexists is given, the module is ignored when it is not foun If
+nofail is given, module initialization failures are ignored.
+
+{ name = <module-name>
+    [ args  = { <key> = <value> ... } ]
+    [ flags = [ [ ifexists ] [ nofail ] ] ]
+}")
+
+  (filter.properties
+   (alist '()))
+
+  (stream.properties
+   (alist '()))
+
+  (extra-config
+   maybe-alist
+   "Additional pipewire client configuration in s-exp format"))
+
 
 (define-configuration pipewire-pulse-configuration
-  (file  (file-like-or-#f (file-append
-		     pipewire-default-package
-		     "/share/pipewire/pipewire-pulse.conf"))
-	 "Filename of target pipewire pulse configuration file.")
-  (extra maybe-alist
-	 "Additional pipewire pulseconfiguration in s-exp format"))
+
+  (context.properties
+   (alist '())
+   "Configure properties in the system.")
+
+  (context.spa-libs
+   (alist
+    '((audio.convert.* . audioconvert/libspa-audioconvert)
+      (support.*       . support/libspa-support)))
+   "Used to find spa factory names. It maps an spa factory name regular
+expression to a library name that should contain that factory.
+
+<factory-name regex> = <library-name>")
+
+  (context.modules
+   (vector-or-list
+    '#(
+       ;; ((name  . libpipewire-module-rt)
+       ;;	(args  . ((nice.level . -11)))
+       ;;	(flags . #( ifexists nofail )))
+       ((name . libpipewire-module-protocol-native))
+       ((name . libpipewire-module-client-node))
+       ((name . libpipewire-module-adapter))
+       ((name . libpipewire-module-metadata ))
+       ((name . libpipewire-module-protocol-pulse)
+	(args . ()))
+       ))
+   "Loads a module with the given parameters.
+If ifexists is given, the module is ignored when it is not foun If
+nofail is given, module initialization failures are ignored.
+
+{ name = <module-name>
+    [ args  = { <key> = <value> ... } ]
+    [ flags = [ [ ifexists ] [ nofail ] ] ]
+}")
+
+  (context.exec
+   (vector-or-list
+    '#(((path . "pactl")
+	(args . "load-module module-always-sink"))))
+   "Execute the given program with arguments.
+Extra modules can be loaded here. Setup in default.pa can be moved
+here.
+
+{ path = <program-name> [ args = \"<arguments>\" ] }")
+
+  (stream.properties
+   (alist '()))
+
+  (pulse.properties
+   (alist
+    '(;; the addresses this server listens on
+      (server.address . #(unix:native))
+      (vm.overrides
+       .
+       ((pulse.min.quantum . "1024/48000" ) ;22ms
+	))))
+   "Pulseaudio server properties.")
+
+  (pulse.rules
+   (vector-or-list
+    '#(((matches . #(()))
+	(actions . ((update-props . ()))))
+
+       ;; skype does not want to use devices that don't have an S16 sample format.
+       ((matches . #(
+		     ((application.process.binary . "teams"))
+		     ((application.process.binary . "teams-insiders"))
+		     ((application.process.binary . "skypeforlinux"))))
+	(actions . ((quirks . #( force-s16-info )))))
+
+       ;; firefox marks the capture streams as don't move and then they
+       ;; can't be moved with pavucontrol or other tools.
+       ((matches . #(((application.process.binary . "firefox"))))
+	(actions . ((quirks . #( remove-capture-dont-move )))))
+
+       ;; speech dispatcher asks for too small latency and then underruns.
+       ((matches . #(((application.name . "~speech-dispatcher*"))))
+	(actions . ((update-props . ((pulse.min.req     . "1024/48000")
+				     (pulse.min.quantum . "1024/48000"))))))))
+   "Client/stream specific properties.")
+
+  (extra-config
+   maybe-alist
+   "Additional pipewire pulseconfiguration in s-exp format"))
 
 (define-configuration pipewire-jack-configuration
-  (file  (file-like-or-#f (file-append
-		     pipewire-default-package
-		     "/share/pipewire/jack.conf"))
-	 "Filename of target pipewire jack configuration file.")
-  (extra maybe-alist
-	 "Additional pipewire jack configuration in s-exp format"))
+  (context.properties
+   (alist
+    '((log.level . 0)))
+   "Configure properties in the system.")
+
+  (context.spa-libs
+   (alist
+    '((support.*       . support/libspa-support)))
+   "Used to find spa factory names. It maps an spa factory name regular
+expression to a library name that should contain that factory.
+
+<factory-name regex> = <library-name>")
+
+  (context.modules
+   (vector-or-list
+    '#(;; Boost the data thread priority.
+       ((name  . libpipewire-module-rt)
+	(args  . ())
+	(flags . #( ifexists nofail )))
+       ((name . libpipewire-module-protocol-native))
+       ((name . libpipewire-module-client-node))
+       ((name . libpipewire-module-metadata ))))
+   "Loads a module with the given parameters.
+If ifexists is given, the module is ignored when it is not foun If
+nofail is given, module initialization failures are ignored.
+
+{ name = <module-name>
+    [ args  = { <key> = <value> ... } ]
+    [ flags = [ [ ifexists ] [ nofail ] ] ]
+}")
+
+  (jack.properties
+   (alist '())
+   "Global properties for all jack clients.")
+
+  (jack.rules
+   (vector-or-list
+    '#(((matches . #(()))
+	(actions . ((update-props . ()))))))
+   "Client specific properties.")
+
+  (extra-config
+   maybe-alist
+   "Additional pipewire jack configuration in s-exp format"))
 
 (define-configuration/no-serialization pipewire-configuration
   (package
     (package pipewire-default-package)
     "PipeWire package to use.")
-  (config-dir (string "/etc/pipewire/")
+  (config-dir (string "/etc/pipewire")
 	      "System directory wherein PipeWire configuration files are stored")
   (client-config (pipewire-client-configuration (pipewire-client-configuration))
 		 "Configuration for PipeWire clients.")
@@ -96,7 +384,7 @@
 ;;     (package wireplumber-default-package)
 ;;     "Wireplumber package to use.")
 ;;   (config-dir (string "/etc/wireplumber/")
-;; 	      "System directory wherein Wireplumber configuration files are stored")
+;;	      "System directory wherein Wireplumber configuration files are stored")
 ;;   (config
 
 
