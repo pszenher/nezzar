@@ -8,6 +8,7 @@
   #:use-module (gnu packages linux)
   #:use-module (gnu packages guile)
   #:use-module (gnu system pam)
+  #:use-module (gnu system shadow)
   #:use-module (ice-9 match)
   #:use-module (json)
 
@@ -20,7 +21,7 @@
 
 ;; TODO: this should be read from 'package' field of <pipewire-configuration>
 ;;       instead of hard-coding
-(define pipewire-default-package pipewire-0.3)
+(define pipewire-default-package pipewire)
 (define wireplumber-default-package wireplumber)
 
 (define-maybe alist)
@@ -242,9 +243,9 @@ expression to a library name that should contain that factory.
   (context.modules
    (vector-or-list
     '#(
-       ;; ((name  . libpipewire-module-rt)
-       ;;	(args  . ((nice.level . -11)))
-       ;;	(flags . #( ifexists nofail )))
+       ((name  . libpipewire-module-rt)
+	(args  . ((nice.level . -11)))
+	(flags . #( ifexists nofail )))
        ((name . libpipewire-module-protocol-native))
        ((name . libpipewire-module-client-node))
        ((name . libpipewire-module-adapter))
@@ -359,62 +360,93 @@ nofail is given, module initialization failures are ignored.
    "Additional pipewire jack configuration in s-exp format"))
 
 (define-configuration/no-serialization pipewire-configuration
-  (package
-    (package pipewire-default-package)
-    "PipeWire package to use.")
-  (config-dir (string "/etc/pipewire")
-	      "System directory wherein PipeWire configuration files are stored")
+  (package       (package pipewire-default-package)
+		 "PipeWire package to use.")
+  (system-mode?  (boolean #f)
+		 "Run PipeWire daemon in system-mode.")
   (client-config (pipewire-client-configuration (pipewire-client-configuration))
 		 "Configuration for PipeWire clients.")
   (daemon-config (pipewire-daemon-configuration (pipewire-daemon-configuration))
 		 "Configuration for the PipeWire system daemon.")
-  (pulse-config (pipewire-pulse-configuration (pipewire-pulse-configuration))
-		"Configuration for the PulseAudio PipeWire support.")
-  (jack-config (pipewire-jack-configuration (pipewire-jack-configuration))
-	       "Configuration for the JACK PipeWire support."))
+  (pulse-config  (pipewire-pulse-configuration (pipewire-pulse-configuration))
+		 "Configuration for the PulseAudio PipeWire support.")
+  (jack-config   (pipewire-jack-configuration (pipewire-jack-configuration))
+		 "Configuration for the JACK PipeWire support."))
 
-;; (define-configuration/no-serialization wireplumber-configuration
-;;   (package
-;;     (package wireplumber-default-package)
-;;     "Wireplumber package to use.")
-;;   (config-dir (string "/etc/wireplumber/")
-;;	      "System directory wherein Wireplumber configuration files are stored")
-;;   (config
+(define (pipewire-environment config)
+  (if (pipewire-configuration-system-mode? config)
+      `(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire"))
+      '()))
 
+(define (pipewire-etc config)
+  `(("pipewire"
+     ,(file-union
+       "pipewire"
+       `(("client.conf"
+	  ,(plain-file
+	    "client.conf" (serialize-configuration
+			   (pipewire-configuration-client-config config)
+			   pipewire-client-configuration-fields)))
+	 ("pipewire.conf"
+	  ,(plain-file
+	    "pipewire.conf" (serialize-configuration
+			     (pipewire-configuration-daemon-config config)
+			     pipewire-daemon-configuration-fields)))
+	 ("pipewire-pulse.conf"
+	  ,(plain-file
+	    "pipewire-pulse.conf" (serialize-configuration
+				   (pipewire-configuration-pulse-config config)
+				   pipewire-pulse-configuration-fields)))
+	 ("jack.conf"
+	  ,(plain-file
+	    "jack.conf" (serialize-configuration
+			 (pipewire-configuration-jack-config config)
+			 pipewire-jack-configuration-fields))))))))
 
-(define pipewire-environment
-  (lambda (config)
-    `(("PIPEWIRE_CONFIG_DIR"  . ,(pipewire-configuration-config-dir config)))))
+(define (pipewire-udev config)
+  (list (pipewire-configuration-package config)))
 
-(define pipewire-etc
-  (lambda (config)
-    `(("pipewire"
-       ,(file-union
-	 "pipewire"
-	 `(("client.conf"
-	    ,(mixed-text-file
-	      "client.conf" (serialize-configuration
-			     (pipewire-configuration-client-config config)
-			     pipewire-client-configuration-fields)))
-	   ("pipewire.conf"
-	    ,(mixed-text-file
-	      "pipewire.conf" (serialize-configuration
-			       (pipewire-configuration-daemon-config config)
-			       pipewire-daemon-configuration-fields)))
-	   ("pipewire-pulse.conf"
-	    ,(mixed-text-file
-	      "pipewire-pulse.conf" (serialize-configuration
-				     (pipewire-configuration-pulse-config config)
-				     pipewire-pulse-configuration-fields)))
-	   ("jack.conf"
-	    ,(mixed-text-file
-	      "jack.conf" (serialize-configuration
-			   (pipewire-configuration-jack-config config)
-			   pipewire-jack-configuration-fields)))))))))
+(define (pipewire-account config)
+  "Return the user accounts and user groups for CONFIG."
+  (if (pipewire-configuration-system-mode? config)
+      (let ((pipewire-user "pipewire")
+	    (pipewire-group "pipewire"))
+	(list (user-group (name pipewire-group) (system? #t))
+	      (user-account
+	       (name pipwire-user)
+	       (system? #t)
+	       (group pipewire-group)
+	       (supplementary-groups '("audio"))
+	       (comment "PipeWire System Daemon User")
+	       (home-directory (string-append "/var/run/" pipewire-user))
+	       (shell (file-append shadow "/sbin/nologin")))))
+      '()))
 
-(define pipewire-udev
-  (lambda (config)
-    (list (pipewire-configuration-package config))))
+(define (pipewire-shepherd-service config)
+  (if (pipewire-configuration-system-mode? config)
+      (list
+       (shepherd-service
+	(documentation "PipeWire daemon.")
+	(provision '(pipewire))
+	(start #~(make-forkexec-constructor
+		  #:user "pipewire" #:group "pipewire"
+		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")
+		  (list #$(file-append
+			   (pipewire-configuration-package config)
+			   "/bin/pipewire"))))
+	(stop #~(make-kill-destructor)))
+       (shepherd-service
+	(documentation "PipeWire PulseAudio daemon.")
+	(provision '(pipewire-pulse))
+	(requirement '(pipewire))
+	(start #~(make-forkexec-constructor
+		  #:user "pipewire" #:group "pipewire"
+		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")
+		  (list #$(file-append
+			   (pipewire-configuration-package config)
+			   "/bin/pipewire-pulse"))))
+	(stop #~(make-kill-destructor))))
+      '()))
 
 (define pipewire-service-type
   (service-type
@@ -425,6 +457,128 @@ nofail is given, module initialization failures are ignored.
 	  (service-extension etc-service-type
 			     pipewire-etc)
 	  (service-extension udev-service-type
-			     pipewire-udev)))
+			     pipewire-udev)
+	  (service-extension account-service-type
+			     pipewire-account)
+	  (service-extension shepherd-root-service-type
+			     pipewire-shepherd-service)))
    (default-value (pipewire-configuration))
    (description "Configure PipeWire sound support.")))
+
+
+;;
+;; Wireplumber
+;;
+
+(define %wireplumber-default-scripts
+  (map (lambda (filename)
+	 `(,filename . (file-append wireplumber-default-package
+				    ,(string-append "/share/wireplumber/" filename))))
+       '("main.lua.d/00-functions.lua"
+	 "main.lua.d/20-default-access.lua"
+	 "main.lua.d/30-alsa-monitor.lua"
+	 "main.lua.d/30-libcamera-monitor.lua"
+	 "main.lua.d/30-v4l2-monitor.lua"
+	 "main.lua.d/40-device-defaults.lua"
+	 "main.lua.d/40-stream-defaults.lua"
+	 "main.lua.d/50-alsa-config.lua"
+	 "main.lua.d/50-default-access-config.lua"
+	 "main.lua.d/50-libcamera-config.lua"
+	 "main.lua.d/50-v4l2-config.lua"
+	 "main.lua.d/90-enable-all.lua"
+
+	 "policy.lua.d/00-functions.lua"
+	 "policy.lua.d/10-default-policy.lua"
+	 "policy.lua.d/50-endpoints-config.lua"
+	 "policy.lua.d/90-enable-all.lua"
+
+	 "bluetooth.lua.d/00-functions.lua"
+	 "bluetooth.lua.d/30-bluez-monitor.lua"
+	 "bluetooth.lua.d/50-bluez-config.lua"
+	 "bluetooth.lua.d/90-enable-all.lua")))
+
+(define-configuration wireplumber-daemon-configuration
+  (context.properties
+   (alist
+    '((log.level . 2)
+      (wireplumber.script-engine . lua-scripting)))
+   "Properties to configure the PipeWire context and some modules.")
+  (context.spa-libs
+   (alist
+    '((api.alsa.*      . alsa/libspa-alsa)
+      (api.bluez5.*    . bluez5/libspa-bluez5)
+      (api.v4l2.*      . v4l2/libspa-v4l2)
+      (api.libcamera.* . libcamera/libspa-libcamera)
+      (audio.convert.* . audioconvert/libspa-audioconvert)
+      (support.*       . support/libspa-support)))
+   "Used to find spa factory names. It maps an spa factory name regular
+expression to a library name that should contain that factory.
+
+<factory-name regex> = <library-name>")
+  (context.modules
+   (vector-or-list
+    '#(;; Boost the data thread priority.
+       ((name  . libpipewire-module-rt)
+	(args  . ())
+	(flags . #( ifexists nofail )))
+       ((name . libpipewire-module-protocol-native))
+       ((name . libpipewire-module-client-node))
+       ((name . libpipewire-module-client-device))
+       ((name . libpipewire-module-adapter ))
+       ((name . libpipewire-module-metadata ))
+       ((name . libpipewire-module-session-manager ))))
+   "PipeWire modules to load.
+If ifexists is given, the module is ignored when it is not foun If
+nofail is given, module initialization failures are ignored.
+
+{ name = <module-name>
+    [ args  = { <key> = <value> ... } ]
+    [ flags = [ [ ifexists ] [ nofail ] ] ]
+}")
+  (wireplumber.components
+   (vector-or-list
+    '#(;; The lua scripting engine
+       ((name . libwireplumber-module-lua-scripting) (type . module))
+
+       ;; The lua configuration file(s)
+       ;; Other components are loaded from there
+       ((name . main.lua) (type . config/lua))
+       ((name . policy.lua) (type . config/lua))
+       ((name . bluetooth.lua) (type . config/lua))))
+   "WirePlumber components to load.
+
+{ name = <component-name>, type = <component-type> }")
+  (extra-config
+   maybe-alist
+   "Additional WirePlumber configuration in s-exp format"))
+
+(define-configuration/no-serialization wireplumber-configuration
+  (package
+    (package wireplumber-default-package)
+    "Wireplumber package to use.")
+  (system-mode?  (boolean #f)
+		 "Run WirePlumber daemon in system-mode.")
+  (daemon-config (wireplumber-daemon-configuration (wireplumber-daemon-configuration))
+		 "WirePlumber daemon context configuration.")
+  (scripts (alist %wireplumber-default-scripts)
+	   "WirePlumber script files"))
+
+(define (wireplumber-etc config)
+  `(("wireplumber"
+     ,(file-union
+       "wireplumber"
+       `(("wireplumber.conf"
+	  ,(mixed-text-file
+	    "wireplumber.conf" (serialize-configuration
+				(wireplumber-configuration-daemon-config config)
+				wireplumber-daemon-configuration-fields)))
+	 ,@(wireplumber-configuration-scripts config))))))
+
+(define wireplumber-service-type
+  (service-type
+   (name 'wireplumber)
+   (extensions
+    (list (service-extension etc-service-type
+			     wireplumber-etc)))
+   (default-value (wireplumber-configuration))
+   (description "Configure WirePlumber session manager support.")))
