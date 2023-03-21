@@ -4,8 +4,7 @@
 
 (define-module (nezzar home services wm)
   #:use-module (gnu home services)
-  #:use-module (rde home services wm)
-  #:use-module (gnu home utils)
+  #:use-module (nezzar home utils)
   #:use-module (gnu packages wm)
   #:use-module (gnu services configuration)
 
