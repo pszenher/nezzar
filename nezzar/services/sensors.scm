@@ -2,7 +2,6 @@
   #:use-module ((srfi srfi-1)  #:select (fold remove))
   #:use-module ((srfi srfi-26) #:select (cut))
   #:use-module (guix gexp)
-  #:use-module (guix store)		;TODO: not a dep, only for testing
   #:use-module ((gnu services) #:select (service-type
 					 service-extension
 					 etc-service-type))
