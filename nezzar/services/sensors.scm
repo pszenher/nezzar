@@ -2,9 +2,13 @@
   #:use-module ((srfi srfi-1)  #:select (fold remove))
   #:use-module ((srfi srfi-26) #:select (cut))
   #:use-module (guix gexp)
-  #:use-module ((gnu services) #:select (service-type
-					 service-extension
-					 etc-service-type))
+  #:use-module ((gnu services)
+		#:select (service-type
+			  service-extension
+			  etc-service-type))
+  #:use-module ((gnu services shepherd)
+		#:select (shepherd-service
+			  shepherd-root-service-type))
   #:use-module ((gnu services configuration)
 		#:select (serialize-configuration
 			  define-maybe
@@ -13,6 +17,8 @@
 			  configuration-field-getter
 			  define-configuration
 			  define-configuration/no-serialization))
+  #:use-module ((gnu packages linux)
+		#:select (lm-sensors))
 
   #:export (fancontrol-service-type
 	    fancontrol-configuration
@@ -114,6 +120,7 @@
   (list (shepherd-service
 	 (provision   '(fancontrol))
 	 (start #~(make-forkexec-constructor
+		   ;; FIXME: add a configuration var for package instead of hardcode
 		   (list #$(file-append lm-sensors "/sbin/fancontrol"))))
 	 (stop  #~(make-kill-destructor)))))
 
