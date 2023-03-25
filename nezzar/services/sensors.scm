@@ -97,7 +97,7 @@
 	   (fields   (map car conf-lst))
 	   (pairs    (map cdr conf-lst)))
       (apply string-append
-       (map serialize-fancontrol-pair-list fields pairs)))))
+	     (map serialize-fancontrol-pair-list fields pairs)))))
 
 (define-configuration fancontrol-configuration
   (interval (u8-integer 1)
@@ -109,16 +109,30 @@
   (devices  (fancontrol-pwm-configuration-list)
 	    "List of pwm configurations mapping pwm output, fan input, and temperature input."))
 
+(define (fancontrol-shepherd-service config)
+  "Return a shepherd service for fancontrol with CONFIG."
+  (list (shepherd-service
+	 (provision   '(fancontrol))
+	 (start #~(make-forkexec-constructor
+		   (list #$(file-append lm-sensors "/sbin/fancontrol"))))
+	 (stop  #~(make-kill-destructor)))))
+
 (define (fancontrol-etc-service config)
   `(("fancontrol"
      ,(mixed-text-file "etc-fancontrol"
-		       (serialize-configuration
-			config fancontrol-configuration-fields)))))
+		       #~(string-append
+			  "\
+# This file was generated from your Guix configuration.  Any changes
+# will be lost upon reboot or reconfiguration.\n\n"
+			  #$(serialize-configuration
+			     config fancontrol-configuration-fields))))))
 
 (define fancontrol-service-type
   (service-type
    (name 'fancontrol)
    (extensions
-    (list (service-extension etc-service-type
+    (list (service-extension shepherd-root-service-type
+                             fancontrol-shepherd-service)
+	  (service-extension etc-service-type
 			     fancontrol-etc-service)))
    (description "Configure PWM fan-speed control with lm_sensors.")))
