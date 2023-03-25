@@ -109,17 +109,16 @@
   (devices  (fancontrol-pwm-configuration-list)
 	    "List of pwm configurations mapping pwm output, fan input, and temperature input."))
 
-(define (fancontrol-etc config)
+(define (fancontrol-etc-service config)
   `(("fancontrol"
-     ,(computed-file
-       "fancontrol"
-       (serialize-configuration
-	config fancontrol-configuration-fields)))))
-  
+     ,(plain-file "etc-fancontrol"
+		  (serialize-configuration
+		   config fancontrol-configuration-fields)))))
+
 (define fancontrol-service-type
   (service-type
    (name 'fancontrol)
    (extensions
     (list (service-extension etc-service-type
-			     fancontrol-etc)))
+			     fancontrol-etc-service)))
    (description "Configure PWM fan-speed control with lm_sensors.")))
