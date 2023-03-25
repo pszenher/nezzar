@@ -111,9 +111,9 @@
 
 (define (fancontrol-etc-service config)
   `(("fancontrol"
-     ,(plain-file "etc-fancontrol"
-		  (serialize-configuration
-		   config fancontrol-configuration-fields)))))
+     ,(mixed-text-file "etc-fancontrol"
+		       (serialize-configuration
+			config fancontrol-configuration-fields)))))
 
 (define fancontrol-service-type
   (service-type
