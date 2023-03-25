@@ -119,6 +119,7 @@
   "Return a shepherd service for fancontrol with CONFIG."
   (list (shepherd-service
 	 (provision   '(fancontrol))
+	 (requirement '(udev))
 	 (start #~(make-forkexec-constructor
 		   ;; FIXME: add a configuration var for package instead of hardcode
 		   (list #$(file-append lm-sensors "/sbin/fancontrol"))))
