@@ -5,6 +5,7 @@
   #:use-module (gnu services base)
   #:use-module (gnu services configuration)
   #:use-module (gnu services shepherd)
+  #:use-module ((gnu packages admin) #:select (shadow))
   #:use-module (gnu packages linux)
   #:use-module (gnu packages guile)
   #:use-module (gnu system pam)
@@ -383,22 +384,22 @@ nofail is given, module initialization failures are ignored.
      ,(file-union
        "pipewire"
        `(("client.conf"
-	  ,(plain-file
+	  ,(mixed-text-file
 	    "client.conf" (serialize-configuration
 			   (pipewire-configuration-client-config config)
 			   pipewire-client-configuration-fields)))
 	 ("pipewire.conf"
-	  ,(plain-file
+	  ,(mixed-text-file
 	    "pipewire.conf" (serialize-configuration
 			     (pipewire-configuration-daemon-config config)
 			     pipewire-daemon-configuration-fields)))
 	 ("pipewire-pulse.conf"
-	  ,(plain-file
+	  ,(mixed-text-file
 	    "pipewire-pulse.conf" (serialize-configuration
 				   (pipewire-configuration-pulse-config config)
 				   pipewire-pulse-configuration-fields)))
 	 ("jack.conf"
-	  ,(plain-file
+	  ,(mixed-text-file
 	    "jack.conf" (serialize-configuration
 			 (pipewire-configuration-jack-config config)
 			 pipewire-jack-configuration-fields))))))))
