@@ -430,11 +430,11 @@ nofail is given, module initialization failures are ignored.
 	(documentation "PipeWire daemon.")
 	(provision '(pipewire-server))
 	(start #~(make-forkexec-constructor
-		  #:user "pipewire" #:group "pipewire"
-		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
-			   "/bin/pipewire"))))
+			   "/bin/pipewire"))
+		  #:user "pipewire" #:group "pipewire"
+		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
