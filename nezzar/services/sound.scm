@@ -26,9 +26,6 @@
 (define %pipewire-default-package pipewire)
 (define %wireplumber-default-package wireplumber)
 
-(define %pipewire-system-user  "pipewire")
-(define %pipewire-system-group "pipewire")
-
 (define-maybe alist)
 
 (define (serialize-alist field-name value)
@@ -414,16 +411,15 @@ nofail is given, module initialization failures are ignored.
 (define (pipewire-account config)
   "Return the user accounts and user groups for CONFIG."
   (if (pipewire-configuration-system-mode? config)
-      (list (user-group (name %pipewire-system-group)
+      (list (user-group (name "pipewire")
 			(system? #t))
 	    (user-account
-	     (name %pipewire-system-user)
+	     (name "pipewire")
 	     (system? #t)
-	     (group %pipewire-system-group)
+	     (group "pipewire")
 	     (supplementary-groups '("audio"))
 	     (comment "PipeWire System Daemon User")
-	     (home-directory
-	      (string-append "/var/run/" %pipewire-system-user))
+	     (home-directory "/var/run/pipewire")
 	     (shell (file-append shadow "/sbin/nologin"))))
       '()))
 
@@ -438,12 +434,9 @@ nofail is given, module initialization failures are ignored.
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire"))
-		  #:user %pipewire-system-user
-		  #:group %pipewire-system-group
-		  #:environment-variables
-		  (list
-		   (string-append
-		    "PIPEWIRE_RUNTIME_DIR=/var/run/" %pipewire-system-user))))
+		  #:user "pipewire"
+		  #:group "pipewire"
+		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/var/run/pipewire")))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
@@ -453,12 +446,9 @@ nofail is given, module initialization failures are ignored.
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire-pulse"))
-		  #:user %pipewire-system-user
-		  #:group %pipewire-system-group
-		  #:environment-variables
-		  (list
-		   (string-append
-		    "PIPEWIRE_RUNTIME_DIR=/var/run/" %pipewire-system-user))))
+		  #:user "pipewire"
+		  #:group "pipewire"
+		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/var/run/pipewire")))
 	(stop #~(make-kill-destructor))))
       '()))
 
