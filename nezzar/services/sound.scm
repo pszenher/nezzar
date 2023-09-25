@@ -4,6 +4,7 @@
   #:use-module (gnu services)
   #:use-module (gnu services base)
   #:use-module (gnu services configuration)
+  #:use-module (gnu services dbus)
   #:use-module (gnu services shepherd)
   #:use-module ((gnu packages admin) #:select (shadow))
   #:use-module ((gnu packages linux) #:select (pipewire wireplumber))
@@ -22,8 +23,11 @@
 
 ;; TODO: this should be read from 'package' field of <pipewire-configuration>
 ;;       instead of hard-coding
-(define pipewire-default-package pipewire)
-(define wireplumber-default-package wireplumber)
+(define %pipewire-default-package pipewire)
+(define %wireplumber-default-package wireplumber)
+
+(define %pipewire-system-user  "pipewire")
+(define %pipewire-system-group "pipewire")
 
 (define-maybe alist)
 
@@ -361,7 +365,7 @@ nofail is given, module initialization failures are ignored.
    "Additional pipewire jack configuration in s-exp format"))
 
 (define-configuration/no-serialization pipewire-configuration
-  (package       (package pipewire-default-package)
+  (package       (package %pipewire-default-package)
 		 "PipeWire package to use.")
   (system-mode?  (boolean #f)
 		 "Run PipeWire daemon in system-mode.")
@@ -410,17 +414,17 @@ nofail is given, module initialization failures are ignored.
 (define (pipewire-account config)
   "Return the user accounts and user groups for CONFIG."
   (if (pipewire-configuration-system-mode? config)
-      (let ((pipewire-user "pipewire")
-	    (pipewire-group "pipewire"))
-	(list (user-group (name pipewire-group) (system? #t))
-	      (user-account
-	       (name pipewire-user)
-	       (system? #t)
-	       (group pipewire-group)
-	       (supplementary-groups '("audio"))
-	       (comment "PipeWire System Daemon User")
-	       (home-directory (string-append "/var/run/" pipewire-user))
-	       (shell (file-append shadow "/sbin/nologin")))))
+      (list (user-group (name %pipewire-system-group)
+			(system? #t))
+	    (user-account
+	     (name %pipewire-system-user)
+	     (system? #t)
+	     (group %pipewire-system-group)
+	     (supplementary-groups '("audio"))
+	     (comment "PipeWire System Daemon User")
+	     (home-directory
+	      (string-append "/var/run/" %pipewire-system-user))
+	     (shell (file-append shadow "/sbin/nologin"))))
       '()))
 
 (define (pipewire-shepherd-service config)
@@ -428,34 +432,47 @@ nofail is given, module initialization failures are ignored.
       (list
        (shepherd-service
 	(documentation "PipeWire daemon.")
-	(provision '(pipewire-server))
+	(provision '(pipewire))
+	(requirement '(dbus-system))
 	(start #~(make-forkexec-constructor
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire"))
-		  #:user "pipewire"
-		  #:group "pipewire"
-		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")))
+		  #:user %pipewire-system-user
+		  #:group %pipewire-system-group
+		  #:environment-variables
+		  (list (string-append
+			 "PIPEWIRE_RUNTIME_DIR=/var/run/"
+			 %pipewire-system-user))))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
-	(provision '(pipewire-pulse-server))
-	(requirement '(pipewire-server))
+	(provision '(pipewire-pulse))
+	(requirement '(pipewire dbus-system))
 	(start #~(make-forkexec-constructor
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire-pulse"))
-		  #:user "pipewire"
-		  #:group "pipewire"
-		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")))
+		  #:user %pipewire-system-user
+		  #:group %pipewire-system-group
+		  #:environment-variables
+		  (list (string-append
+			 "PIPEWIRE_RUNTIME_DIR=/var/run/"
+			 %pipewire-system-user))))
 	(stop #~(make-kill-destructor))))
       '()))
 
+;; (define (pipewire-dbus-service config)
+;;   (if (pipewire-configuration-system-mode? config)
+;;       (list )))
+
 (define pipewire-service-type
   (service-type
-   (name 'pipewire-server)
+   (name 'pipewire)
    (extensions
-    (list (service-extension session-environment-service-type
+    (list ;; (service-extension dbus-root-service-type
+          ;;                    pipewire-dbus-service)
+	  (service-extension session-environment-service-type
 			     pipewire-environment)
 	  (service-extension etc-service-type
 			     pipewire-etc)
@@ -475,7 +492,7 @@ nofail is given, module initialization failures are ignored.
 
 (define %wireplumber-default-scripts
   (map (lambda (filename)
-	 `(,filename . (file-append wireplumber-default-package
+	 `(,filename . (file-append %wireplumber-default-package
 				    ,(string-append "/share/wireplumber/" filename))))
        '("main.lua.d/00-functions.lua"
 	 "main.lua.d/20-default-access.lua"
@@ -557,7 +574,7 @@ nofail is given, module initialization failures are ignored.
 
 (define-configuration/no-serialization wireplumber-configuration
   (package
-    (package wireplumber-default-package)
+    (package %wireplumber-default-package)
     "Wireplumber package to use.")
   (system-mode?  (boolean #f)
 		 "Run WirePlumber daemon in system-mode.")
