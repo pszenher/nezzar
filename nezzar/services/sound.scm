@@ -451,7 +451,7 @@ nofail is given, module initialization failures are ignored.
 
 (define pipewire-service-type
   (service-type
-   (name 'pipewire)
+   (name 'pipewire-server)
    (extensions
     (list (service-extension session-environment-service-type
 			     pipewire-environment)
