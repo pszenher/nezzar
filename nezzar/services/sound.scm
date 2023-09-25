@@ -433,7 +433,8 @@ nofail is given, module initialization failures are ignored.
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire"))
-		  #:user "pipewire" #:group "pipewire"
+		  #:user "pipewire"
+		  #:group "pipewire"
 		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
@@ -441,11 +442,12 @@ nofail is given, module initialization failures are ignored.
 	(provision '(pipewire-pulse-server))
 	(requirement '(pipewire-server))
 	(start #~(make-forkexec-constructor
-		  #:user "pipewire" #:group "pipewire"
-		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
-			   "/bin/pipewire-pulse"))))
+			   "/bin/pipewire-pulse"))
+		  #:user "pipewire"
+		  #:group "pipewire"
+		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")))
 	(stop #~(make-kill-destructor))))
       '()))
 
