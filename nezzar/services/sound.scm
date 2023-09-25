@@ -428,7 +428,7 @@ nofail is given, module initialization failures are ignored.
       (list
        (shepherd-service
 	(documentation "PipeWire daemon.")
-	(provision '(pipewire))
+	(provision '(pipewire-server))
 	(start #~(make-forkexec-constructor
 		  #:user "pipewire" #:group "pipewire"
 		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")
@@ -438,8 +438,8 @@ nofail is given, module initialization failures are ignored.
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
-	(provision '(pipewire-pulse))
-	(requirement '(pipewire))
+	(provision '(pipewire-pulse-server))
+	(requirement '(pipewire-server))
 	(start #~(make-forkexec-constructor
 		  #:user "pipewire" #:group "pipewire"
 		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/run/")
