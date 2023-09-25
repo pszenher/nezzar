@@ -6,7 +6,7 @@
   #:use-module (gnu services configuration)
   #:use-module (gnu services shepherd)
   #:use-module ((gnu packages admin) #:select (shadow))
-  #:use-module (gnu packages linux)
+  #:use-module ((gnu packages linux) #:select (pipewire wireplumber))
   #:use-module (gnu packages guile)
   #:use-module (gnu system pam)
   #:use-module (gnu system shadow)
