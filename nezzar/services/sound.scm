@@ -414,7 +414,7 @@ nofail is given, module initialization failures are ignored.
 	    (pipewire-group "pipewire"))
 	(list (user-group (name pipewire-group) (system? #t))
 	      (user-account
-	       (name pipwire-user)
+	       (name pipewire-user)
 	       (system? #t)
 	       (group pipewire-group)
 	       (supplementary-groups '("audio"))
