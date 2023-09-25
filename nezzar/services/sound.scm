@@ -441,9 +441,9 @@ nofail is given, module initialization failures are ignored.
 		  #:user %pipewire-system-user
 		  #:group %pipewire-system-group
 		  #:environment-variables
-		  (list (string-append
-			 "PIPEWIRE_RUNTIME_DIR=/var/run/"
-			 %pipewire-system-user))))
+		  (list
+		   (string-append
+		    "PIPEWIRE_RUNTIME_DIR=/var/run/" %pipewire-system-user))))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
@@ -456,9 +456,9 @@ nofail is given, module initialization failures are ignored.
 		  #:user %pipewire-system-user
 		  #:group %pipewire-system-group
 		  #:environment-variables
-		  (list (string-append
-			 "PIPEWIRE_RUNTIME_DIR=/var/run/"
-			 %pipewire-system-user))))
+		  (list
+		   (string-append
+		    "PIPEWIRE_RUNTIME_DIR=/var/run/" %pipewire-system-user))))
 	(stop #~(make-kill-destructor))))
       '()))
 
