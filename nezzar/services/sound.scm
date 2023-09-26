@@ -388,9 +388,9 @@ nofail is given, module initialization failures are ignored.
 
 (define (pipewire-environment config)
   (if (pipewire-configuration-system-mode? config)
-      '(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire")
-	("PIPEWIRE_RUNTIME_DIR" . %pipewire-daemon-runtime-dir)
-	("PULSE_RUNTIME_PATH"   . %pipewire-pulse-daemon-runtime-dir))
+      #~'(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire")
+	  ("PIPEWIRE_RUNTIME_DIR" . #$%pipewire-daemon-runtime-dir)
+	  ("PULSE_RUNTIME_PATH"   . #$%pipewire-pulse-daemon-runtime-dir))
       '()))
 
 (define (pipewire-etc config)
