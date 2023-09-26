@@ -381,8 +381,7 @@ nofail is given, module initialization failures are ignored.
 
 (define (pipewire-environment config)
   (if (pipewire-configuration-system-mode? config)
-      '(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire")
-	("PIPEWIRE_RUNTIME_DIR" . "/var/run/pipewire"))
+      '(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire"))
       '()))
 
 (define (pipewire-etc config)
@@ -439,7 +438,8 @@ nofail is given, module initialization failures are ignored.
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire"))
 		  #:user "pipewire"
-		  #:group "pipewire"))
+		  #:group "pipewire"
+		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/var/run/pipewire")))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
@@ -450,7 +450,9 @@ nofail is given, module initialization failures are ignored.
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire-pulse"))
 		  #:user "pipewire"
-		  #:group "pipewire"))
+		  #:group "pipewire"
+		  #:pid-file "/var/run/pipewire/pid"
+		  #:environment-variables '("PULSE_RUNTIME_PATH=/var/run/pipewire")))
 	(stop #~(make-kill-destructor))))
       '()))
 
