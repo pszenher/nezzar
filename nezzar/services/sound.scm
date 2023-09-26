@@ -484,7 +484,7 @@ nofail is given, module initialization failures are ignored.
 		    (chmod dirname #o755)))))
       (begin
 	(use-modules (guix build utils))
-	(map activate-dir pw-rt-dirs))))
+	(map activate-runtime-dir pw-rt-dirs))))
 
 (define pipewire-service-type
   (service-type
