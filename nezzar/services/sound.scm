@@ -377,7 +377,8 @@ nofail is given, module initialization failures are ignored.
 
 (define (pipewire-environment config)
   (if (pipewire-configuration-system-mode? config)
-      `(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire"))
+      '(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire")
+	("PIPEWIRE_RUNTIME_DIR" . "/var/run/pipewire"))
       '()))
 
 (define (pipewire-etc config)
@@ -429,40 +430,31 @@ nofail is given, module initialization failures are ignored.
        (shepherd-service
 	(documentation "PipeWire daemon.")
 	(provision '(pipewire))
-	(requirement '(dbus-system))
 	(start #~(make-forkexec-constructor
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire"))
 		  #:user "pipewire"
-		  #:group "pipewire"
-		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/var/run/pipewire")))
+		  #:group "pipewire"))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
 	(provision '(pipewire-pulse))
-	(requirement '(pipewire dbus-system))
+	(requirement '(pipewire))
 	(start #~(make-forkexec-constructor
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire-pulse"))
 		  #:user "pipewire"
-		  #:group "pipewire"
-		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/var/run/pipewire")))
+		  #:group "pipewire"))
 	(stop #~(make-kill-destructor))))
       '()))
-
-;; (define (pipewire-dbus-service config)
-;;   (if (pipewire-configuration-system-mode? config)
-;;       (list )))
 
 (define pipewire-service-type
   (service-type
    (name 'pipewire)
    (extensions
-    (list ;; (service-extension dbus-root-service-type
-          ;;                    pipewire-dbus-service)
-	  (service-extension session-environment-service-type
+    (list (service-extension session-environment-service-type
 			     pipewire-environment)
 	  (service-extension etc-service-type
 			     pipewire-etc)
