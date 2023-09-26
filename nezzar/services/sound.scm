@@ -480,7 +480,7 @@ nofail is given, module initialization failures are ignored.
 	   (activate-runtime-dir
 	    (lambda (dirname)
 	      (begin (mkdir-p dirname)
-		     (chown dirname (passwd:uid pw-user) (passwd:gid pw-group))
+		     (chown dirname (passwd:uid pw-user) (group:gid pw-group))
 		     (chmod dirname #o755)))))
       (begin
 	(use-modules (guix build utils))
