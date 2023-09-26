@@ -19,7 +19,11 @@
 	    pipewire-client-configuration
 	    pipewire-daemon-configuration
 	    pipewire-pulse-configuration
-	    pipewire-jack-configuration))
+	    pipewire-jack-configuration
+
+	    wireplumber-service-type
+	    wireplumber-configuration
+	    wireplumber-daemon-configuration))
 
 ;; TODO: this should be read from 'package' field of <pipewire-configuration>
 ;;       instead of hard-coding
