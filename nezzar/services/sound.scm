@@ -30,6 +30,13 @@
 (define %pipewire-default-package pipewire)
 (define %wireplumber-default-package wireplumber)
 
+(define %pipewire-daemon-user  "pipewire")
+(define %pipewire-daemon-group "pipewire")
+(define %pipewire-daemon-supp-groups '("audio"))
+
+(define %pipewire-daemon-runtime-dir "/var/run/pipewire")
+(define %pipewire-pulse-daemon-runtime-dir "/var/run/pulse")
+
 (define-maybe alist)
 
 (define (serialize-alist field-name value)
@@ -381,7 +388,9 @@ nofail is given, module initialization failures are ignored.
 
 (define (pipewire-environment config)
   (if (pipewire-configuration-system-mode? config)
-      '(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire"))
+      '(("PIPEWIRE_CONFIG_DIR"  . "/etc/pipewire")
+	("PIPEWIRE_RUNTIME_DIR" . %pipewire-daemon-runtime-dir)
+	("PULSE_RUNTIME_PATH"   . %pipewire-pulse-daemon-runtime-dir))
       '()))
 
 (define (pipewire-etc config)
@@ -415,16 +424,16 @@ nofail is given, module initialization failures are ignored.
 (define (pipewire-account config)
   "Return the user accounts and user groups for CONFIG."
   (if (pipewire-configuration-system-mode? config)
-      (list (user-group (name "pipewire")
+      (list (user-group (name %pipewire-daemon-group)
 			(system? #t))
 	    (user-account
-	     (name "pipewire")
-	     (system? #t)
-	     (group "pipewire")
-	     (supplementary-groups '("audio"))
+             (name %pipewire-daemon-user)
+             (group %pipewire-daemon-group)
+	     (supplementary-groups %pipewire-daemon-supp-groups)
 	     (comment "PipeWire System Daemon User")
-	     (home-directory "/var/run/pipewire")
-	     (shell (file-append shadow "/sbin/nologin"))))
+	     (create-home-directory? #f)
+	     (shell (file-append shadow "/sbin/nologin"))
+	     (system? #t)))
       '()))
 
 (define (pipewire-shepherd-service config)
@@ -437,9 +446,12 @@ nofail is given, module initialization failures are ignored.
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire"))
-		  #:user "pipewire"
-		  #:group "pipewire"
-		  #:environment-variables '("PIPEWIRE_RUNTIME_DIR=/var/run/pipewire")))
+		  #:user #$%pipewire-daemon-user
+		  #:group #$%pipewire-daemon-group
+		  #:supplementary-groups #$%pipewire-daemon-supp-groups
+		  #:environment-variables
+		  (list
+		   (string-append "PIPEWIRE_RUNTIME_DIR=" %pipewire-daemon-runtime-dir))))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
@@ -449,12 +461,30 @@ nofail is given, module initialization failures are ignored.
 		  (list #$(file-append
 			   (pipewire-configuration-package config)
 			   "/bin/pipewire-pulse"))
-		  #:user "pipewire"
-		  #:group "pipewire"
-		  #:pid-file "/var/run/pipewire/pid"
-		  #:environment-variables '("PULSE_RUNTIME_PATH=/var/run/pipewire")))
+		  #:user #$%pipewire-daemon-user
+		  #:group #$%pipewire-daemon-group
+		  #:supplementary-groups #$%pipewire-daemon-supp-groups
+		  #:environment-variables
+		  (list
+		   (string-append "PIPEWIRE_RUNTIME_DIR=" #$%pipewire-daemon-runtime-dir)
+		   (string-append "PULSE_RUNTIME_PATH="   #$%pipewire-pulse-daemon-runtime-dir))))
 	(stop #~(make-kill-destructor))))
       '()))
+
+(define (pipewire-activation config)
+  "Return the activation gexp for CONFIG (create pipewire runtime directories)."
+  #~(let ((pw-user  (getpwnam #$%pipewire-daemon-user))
+	  (pw-group (getgrnam #$%pipewire-daemon-group))
+	  (pw-rt-dirs '( #$%pipewire-daemon-runtime-dir
+			 #$%pipewire-pulse-daemon-runtime-dir ))
+	  (activate-runtime-dir
+	   (lambda (dirname)
+	     (begin (mkdir-p dirname)
+		    (chown dirname (passwd:uid pw-user) (passwd:gid pw-group))
+		    (chmod dirname #o755)))))
+      (begin
+	(use-modules (guix build utils))
+	(map activate-dir pw-rt-dirs))))
 
 (define pipewire-service-type
   (service-type
@@ -468,6 +498,8 @@ nofail is given, module initialization failures are ignored.
 			     pipewire-udev)
 	  (service-extension account-service-type
 			     pipewire-account)
+	  (service-extension activation-service-type
+			     pipewire-activation)
 	  (service-extension shepherd-root-service-type
 			     pipewire-shepherd-service)))
    (default-value (pipewire-configuration))
