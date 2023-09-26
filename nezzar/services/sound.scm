@@ -448,7 +448,7 @@ nofail is given, module initialization failures are ignored.
 			   "/bin/pipewire"))
 		  #:user #$%pipewire-daemon-user
 		  #:group #$%pipewire-daemon-group
-		  #:supplementary-groups #$%pipewire-daemon-supp-groups
+		  ;; #:supplementary-groups #$%pipewire-daemon-supp-groups
 		  #:environment-variables
 		  (list
 		   (string-append "PIPEWIRE_RUNTIME_DIR=" #$%pipewire-daemon-runtime-dir))))
@@ -463,7 +463,7 @@ nofail is given, module initialization failures are ignored.
 			   "/bin/pipewire-pulse"))
 		  #:user #$%pipewire-daemon-user
 		  #:group #$%pipewire-daemon-group
-		  #:supplementary-groups #$%pipewire-daemon-supp-groups
+		  ;; #:supplementary-groups #$%pipewire-daemon-supp-groups
 		  #:environment-variables
 		  (list
 		   (string-append "PIPEWIRE_RUNTIME_DIR=" #$%pipewire-daemon-runtime-dir)
