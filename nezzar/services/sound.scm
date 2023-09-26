@@ -451,7 +451,7 @@ nofail is given, module initialization failures are ignored.
 		  #:supplementary-groups #$%pipewire-daemon-supp-groups
 		  #:environment-variables
 		  (list
-		   (string-append "PIPEWIRE_RUNTIME_DIR=" %pipewire-daemon-runtime-dir))))
+		   (string-append "PIPEWIRE_RUNTIME_DIR=" #$%pipewire-daemon-runtime-dir))))
 	(stop #~(make-kill-destructor)))
        (shepherd-service
 	(documentation "PipeWire PulseAudio daemon.")
