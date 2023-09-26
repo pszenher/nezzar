@@ -473,15 +473,15 @@ nofail is given, module initialization failures are ignored.
 
 (define (pipewire-activation config)
   "Return the activation gexp for CONFIG (create pipewire runtime directories)."
-  #~(let ((pw-user  (getpwnam #$%pipewire-daemon-user))
-	  (pw-group (getgrnam #$%pipewire-daemon-group))
-	  (pw-rt-dirs '( #$%pipewire-daemon-runtime-dir
+  #~(let* ((pw-user  (getpwnam #$%pipewire-daemon-user))
+	   (pw-group (getgrnam #$%pipewire-daemon-group))
+	   (pw-rt-dirs '( #$%pipewire-daemon-runtime-dir
 			 #$%pipewire-pulse-daemon-runtime-dir ))
-	  (activate-runtime-dir
-	   (lambda (dirname)
-	     (begin (mkdir-p dirname)
-		    (chown dirname (passwd:uid pw-user) (passwd:gid pw-group))
-		    (chmod dirname #o755)))))
+	   (activate-runtime-dir
+	    (lambda (dirname)
+	      (begin (mkdir-p dirname)
+		     (chown dirname (passwd:uid pw-user) (passwd:gid pw-group))
+		     (chmod dirname #o755)))))
       (begin
 	(use-modules (guix build utils))
 	(map activate-runtime-dir pw-rt-dirs))))
