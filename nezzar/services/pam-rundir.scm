@@ -10,14 +10,17 @@
     (pam-entry
      (control "optional")
      (module #~(string-append #$pam-rundir "/lib/security/pam_rundir.so"))))
-  (list (lambda (pam)
-	  (if (member (pam-service-name pam)
-		      '("login" "greetd" "su" "slim" "gdm-password" "sddm"))
-	      (pam-service
-	       (inherit pam)
-	       (session (append (pam-service-session pam)
-				(list optional-pam-rundir))))
-	      pam))))
+  (list
+   (pam-extension
+    (transformer
+     (lambda (pam)
+       (if (member (pam-service-name pam)
+		   '("login" "greetd" "su" "slim" "gdm-password" "sddm"))
+	   (pam-service
+	    (inherit pam)
+	    (session (append (pam-service-session pam)
+			     (list optional-pam-rundir))))
+	   pam))))))
 
 (define pam-rundir-service-type
   (service-type
