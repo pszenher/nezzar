@@ -1,6 +1,7 @@
 (define-module (nezzar packages hardware)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system python)
   #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module (guix gexp)
@@ -274,6 +275,7 @@ LDFLAGS and parse the output to build extensions with setup.py.")
    (description "TPM 2.0 TSS Bindings for Python")
    (license license:bsd-3)))
 
+(use-modules ((gnu packages) #:select (search-auxiliary-file)))
 (define-public tpm2-pkcs11
   (package
    (name "tpm2-pkcs11")
@@ -304,7 +306,8 @@ LDFLAGS and parse the output to build extensions with setup.py.")
 
      ;; Optional dependencies for tpm2_ptool
      tpm2-tools
-     python
+
+     python-wrapper
      python-bcrypt
      python-cryptography
      python-pyyaml
@@ -316,21 +319,68 @@ LDFLAGS and parse the output to build extensions with setup.py.")
      cmocka
      swtpm))
    (build-system gnu-build-system)
+   (outputs '("out" "python"))
    (arguments
-    `(#:phases
-      (modify-phases %standard-phases
-		     (add-before 'bootstrap 'set-version-string
-				 (lambda _
-				   (substitute* "bootstrap"
-						(("git describe --tags --always --dirty") ,(format #f "echo ~a" version)))))
-		     ;; FIXME: add phase(s) for building/installing
-		     ;;        python subtools (we need tpm2_ptool
-		     ;;        specifically)
-		     ;; 
-		     ;; (add-after 'build 'build-python
-		     ;; 		(lambda _
-		     ;; 		  (invoke "python" "tools/setup.py" "build")))
-		     )))
+    (list
+     #:imported-modules %python-build-system-modules
+     #:modules '((srfi srfi-26)
+		 (guix build utils)
+		 (guix build gnu-build-system)
+		 ((guix build python-build-system) #:prefix python:))
+     #:phases
+     (with-imported-modules '((guix build python-build-system))
+       #~(let ((python-phase (lambda (phase)
+			       (let ((phase-func (assq-ref python:%standard-phases phase)))
+				 (cut phase-func #:use-setuptools? #t <...> )))))
+	   (modify-phases %standard-phases
+	     (add-before 'bootstrap 'set-version-string
+	       (lambda* (#:key version #:allow-other-keys)
+		 (substitute* "bootstrap"
+		   (("git describe --tags --always --dirty") #$(format #f "echo ~a" (package-version this-package))))))
+	     (add-after
+		 'unpack
+		 'ensure-no-mtimes-pre-1980
+	       (python-phase 'ensure-no-mtimes-pre-1980))
+	     (add-after
+		 'ensure-no-mtimes-pre-1980
+		 'enable-bytecode-determinism
+	       (python-phase 'enable-bytecode-determinism))
+	     (add-after
+		 'enable-bytecode-determinism
+		 'ensure-no-cythonized-files
+	       (python-phase 'ensure-no-cythonized-files))
+	     
+	     (add-after
+		 'build
+		 'python:build
+	       (python-phase 'build))
+	     (add-after
+		 'python:build
+		 'python:install
+	       (python-phase 'install))
+
+	     (add-after
+		 'python:install
+		 'python:add-install-to-pythonpath
+	       (python-phase 'add-install-to-pythonpath))
+	     (add-after
+		 'python:add-install-to-pythonpath
+		 'python:add-install-to-path
+	       (python-phase 'add-install-to-path))
+	     (add-after
+		 'python:add-install-to-path
+		 'python:wrap
+	       (python-phase 'wrap))
+	     (add-after
+		 'python:wrap
+		 'python:check
+	       (python-phase 'check))
+
+	     ;; Directory excursion for python build/install steps
+	     (add-before 'python:build 'python:chdir-down
+	       (lambda _ (chdir "tools")))
+	     (add-after 'python:check 'python:chdir-up
+	       (lambda _ (chdir ".."))))))))
    (home-page "https://tpm2-software.github.io/")
    (synopsis "A PKCS#11 interface for TPM2 hardware")
    (description
