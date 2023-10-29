@@ -1,32 +1,38 @@
 (define-module (nezzar services security-token)
+  #:use-module (ice-9 format)
   #:use-module (guix gexp)
   #:use-module (guix records)
   #:use-module (guix packages)
-
   #:use-module (gnu services)
   #:use-module (gnu services configuration)
   #:use-module (gnu services shepherd)
-
   #:use-module (gnu system pam)
-
   #:use-module (nezzar packages hardware)
 
   #:export (tpm2-abrmd-service-type
 	    tpm2-abrmd-configuration))
 
+(define (serialize-field field-name val)
+  (format #f "--~a~@[=~a~]~%" field-name val))
 
- ;; `tcti-string?'
- ;; `serialize-tcti-string'
- ;; `serialize-boolean'
- ;; `serialize-number'
- ;; `logging-target?'
- ;; `serialize-logging-target'
- ;; `serialize-string'
- ;; `maybe-string?'
- ;; `serialize-maybe-string'
+(define (serialize-string field-name val)
+  (serialize-field field-name (string-append "\"" val "\"")))
+(define (serialize-boolean field-name val)
+  (if val (serialize-field field-name #f) ""))
+(define serialize-number serialize-field)
 
 (define (tcti-string? val)
-  (error "Not Implemented."))
+  (let ((num-colons (lambda (str) (- (length (string-split str #\:)) 1))))
+    (and (string? val)
+	 (= 1 (num-colons val)))))
+(define serialize-tcti-string serialize-string)
+
+(define (logging-target? val)
+  (and (string? val)
+       (member val '("stdout" "syslog"))))
+(define serialize-logging-target serialize-string)
+
+(define-maybe string)
 
 ;;;
 ;;; TPM 2.0 Access Broker and Resource Manager Daemon
@@ -35,7 +41,8 @@
 (define-configuration tpm2-abrmd-configuration
   (package
     (package tpm2-abrmd)
-    "@code{tpm2-abrmd} Guix Package")
+    "@code{tpm2-abrmd} Guix Package"
+    empty-serializer)
   (tcti
    (tcti-string "libtss2-tcti-device.so.0:/dev/tpm0")
    "A string that describes the @acronym{TCTI, @acronym{TPM} Command
@@ -108,10 +115,6 @@ of @samp{com.intel.tss2.Tabrmd}.")
    "Connect daemon to the session dbus. If the option is not specified the
 daemon connects to the system dbus."))
 
-;; (define (serialize-tpm2-abrmd-configuration config)
-;;   (match-record config <tpm2-abrmd-configuration>
-;; 		))
-
 (define (tpm2-abrmd-shepherd-service config)
   (match-record config <tpm2-abrmd-configuration> (package)
     (shepherd-service
@@ -120,7 +123,9 @@ daemon connects to the system dbus."))
      (requirement '(syslogd))
      (start #~(make-forkexec-constructor
 	       (cons #$(file-append package "/sbin/tpm2-abrmd")
-		     (config->cmdline-args config))
+		     (string-split
+		      (serialize-configuration config)
+		      #\newline))
 	       #:user "tss"
 	       #:group "tss"
 	       #:log-file "/var/log/tpm2-abrmd.log"))
