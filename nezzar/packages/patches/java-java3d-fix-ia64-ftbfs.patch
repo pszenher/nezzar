@@ -1,0 +1,21 @@
+Index: java3d-1.5.2+dfsg/j3d-core/src/native/ogl/build-linux-ia64.xml
+===================================================================
+--- java3d-1.5.2+dfsg.orig/j3d-core/src/native/ogl/build-linux-ia64.xml	2008-02-28 21:18:00.000000000 +0100
++++ java3d-1.5.2+dfsg/j3d-core/src/native/ogl/build-linux-ia64.xml	2009-09-15 11:58:18.000000000 +0200
+@@ -22,14 +22,14 @@
+ 
+     <!-- Compile the c source files; based on build-linux-amd64.xml-->
+     <exec dir="${build}/${platform}/${bldType}/native/ogl/objs" executable="gcc">
+-	<arg line="-I${oglsrc} -I${java.home}/../include -I${java.home}/../include/linux -I${javahCoreTarget} ${bldFlag} -DLINUX -c ${oglsrc}/DrawingSurfaceObjectAWT.c ${oglsrc}/Canvas3D.c ${oglsrc}/GraphicsContext3D.c  ${oglsrc}/NativeScreenInfo.c  ${oglsrc}/NativeConfigTemplate3D.c  ${oglsrc}/MasterControl.c  ${oglsrc}/GeometryArrayRetained.c  ${oglsrc}/Attributes.c  ${oglsrc}/CgShaderProgram.c  ${oglsrc}/GLSLShaderProgram.c  ${oglsrc}/Lights.c"/>
++	<arg line="-fPIC -I${oglsrc} -I${java.home}/../include -I${java.home}/../include/linux -I${javahCoreTarget} ${bldFlag} -DLINUX -c ${oglsrc}/DrawingSurfaceObjectAWT.c ${oglsrc}/Canvas3D.c ${oglsrc}/GraphicsContext3D.c  ${oglsrc}/NativeScreenInfo.c  ${oglsrc}/NativeConfigTemplate3D.c  ${oglsrc}/MasterControl.c  ${oglsrc}/GeometryArrayRetained.c  ${oglsrc}/Attributes.c  ${oglsrc}/CgShaderProgram.c  ${oglsrc}/GLSLShaderProgram.c  ${oglsrc}/Lights.c"/>
+     </exec>
+ 
+     <!-- Create the library file; based on build-linux-amd64.xml-->
+     <!-- Must use gcc to link, not ld, hence also need -shared; refer to http://www.gelato.unsw.edu.au/linux-ia64/0006/0212.html -->
+     <!-- Removed -R/usr/openwin/lib - an ld specific option (should be a filename, not a dir?!?) -->
+     <exec dir="${build}/${platform}/${bldType}/native/ogl/objs" executable="gcc">
+-	<arg line="DrawingSurfaceObjectAWT.o  Canvas3D.o  GraphicsContext3D.o  NativeScreenInfo.o  NativeConfigTemplate3D.o  MasterControl.o  GeometryArrayRetained.o  Attributes.o  CgShaderProgram.o  GLSLShaderProgram.o  Lights.o -G -z defs -shared -L/usr/X11R6/lib -ldl -lGL -lX11 -lXext -lm -lnsl -lc -L${java.home}/lib/ia64 -ljawt -L${java.home}/lib/ia64/jrockit -ljvm  -o libj3dcore-ogl.so"/>
++	<arg line="DrawingSurfaceObjectAWT.o  Canvas3D.o  GraphicsContext3D.o  NativeScreenInfo.o  NativeConfigTemplate3D.o  MasterControl.o  GeometryArrayRetained.o  Attributes.o  CgShaderProgram.o  GLSLShaderProgram.o  Lights.o -z defs -shared -L/usr/X11R6/lib -ldl -lGL -lX11 -lXext -lm -lnsl -lc -L${java.home}/lib/ia64 -ljawt -L${java.home}/lib/ia64/server -ljvm  -o libj3dcore-ogl.so"/>
+     </exec>
+ <!-- -L${java.home}/lib/ia64/server -ljvm  -o libj3dcore-ogl.so"/> -->
+ 

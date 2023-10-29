@@ -1,0 +1,28 @@
+Index: java3d-1.5.2+dfsg/j3d-core/src/classes/build.xml
+===================================================================
+--- java3d-1.5.2+dfsg.orig/j3d-core/src/classes/build.xml	2009-08-22 12:12:44.000000000 +0200
++++ java3d-1.5.2+dfsg/j3d-core/src/classes/build.xml	2009-08-22 12:12:53.000000000 +0200
+@@ -242,7 +242,6 @@
+     <!-- Compile the javadoc from ${src} into ${build}/javadocs -->
+     <javadoc packagenames="javax.media.j3d.*,
+                            javax.vecmath.*"
+-             maxmemory="128m"
+              destdir="${build}/${platform}/javadocs/docs-jcp"
+ 	     bottom="${javadoc.bottom}"
+              windowtitle="${build.javadoc.name} ${version}">
+@@ -283,7 +282,6 @@
+     <javadoc packagenames="javax.media.j3d.*,
+                            com.sun.j3d.*,
+                            javax.vecmath.*"
+-             maxmemory="128m"
+ 	     private="true"
+              destdir="${build}/${platform}/javadocs/docs-private"
+ 	     bottom="${javadoc.bottom}"
+@@ -318,7 +316,6 @@
+              excludepackagenames="com.sun.j3d.utils.scenegraph.io.retained,
+ 			   com.sun.j3d.exp.swing.impl,
+ 			   com.sun.j3d.utils.scenegraph.io.state.*"
+-             maxmemory="128m"
+              destdir="${build}/${platform}/javadocs/docs-public"
+ 	     bottom="${javadoc.bottom}"
+              windowtitle="${build.javadoc.name} ${version}">

@@ -1,0 +1,40 @@
+From: Jochen Sprickerhof <jspricke@debian.org>
+Date: Mon, 29 Mar 2021 19:48:13 +0200
+Subject: Fix definition of GLsizeiptr
+
+---
+ j3d-core/src/native/ogl/glext.h | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/j3d-core/src/native/ogl/glext.h b/j3d-core/src/native/ogl/glext.h
+index 2519a6c..71ff798 100644
+--- a/j3d-core/src/native/ogl/glext.h
++++ b/j3d-core/src/native/ogl/glext.h
+@@ -43,6 +43,8 @@ extern "C" {
+ #define GLAPI extern
+ #endif
+ 
++#include <KHR/khrplatform.h>
++
+ /*************************************************************/
+ 
+ /* Header file version number, required by OpenGL ABI for Linux */
+@@ -3390,14 +3392,14 @@ typedef char GLchar;			/* native character */
+ 
+ #ifndef GL_VERSION_1_5
+ /* GL types for handling large vertex buffer objects */
+-typedef ptrdiff_t GLintptr;
+-typedef ptrdiff_t GLsizeiptr;
++typedef khronos_intptr_t GLintptr;
++typedef khronos_ssize_t GLsizeiptr;
+ #endif
+ 
+ #ifndef GL_ARB_vertex_buffer_object
+ /* GL types for handling large vertex buffer objects */
+-typedef ptrdiff_t GLintptrARB;
+-typedef ptrdiff_t GLsizeiptrARB;
++typedef khronos_intptr_t GLintptrARB;
++typedef khronos_ssize_t GLsizeiptrARB;
+ #endif
+ 
+ #ifndef GL_ARB_shader_objects

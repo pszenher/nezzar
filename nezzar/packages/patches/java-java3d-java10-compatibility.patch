@@ -1,0 +1,1889 @@
+Description: Fixes the build failure with Java 10 caused by the removal of javah
+Author: Emmanuel Bourg <ebourg@apache.org>
+Forwarded: no
+--- a/j3d-core/src/classes/build.xml
++++ b/j3d-core/src/classes/build.xml
+@@ -45,6 +45,7 @@
+     <!-- Compile the java code from ${src} into ${build}/${platform}/debug/classes -->
+     <javac srcdir="${src}/classes/share:${src}/classes/${wstype}:${jogl.pipeline.srcdir}:${core_utils_src}/classes/share:${build-debug-gen}/classes"
+            destdir="${build}/${platform}/debug/classes"
++           nativeHeaderDir="${build}/${platform}/opt/native/javah/j3dcore"
+ 	   source="1.5"
+ 	   target="1.5"
+ 	   debug="true"
+@@ -52,6 +53,10 @@
+            excludes="${javac.excludes}">
+ 	   <classpath refid="vecmath.debug.classpath"/>
+     </javac>
++    <mkdir dir="${build}/${platform}/debug/native/javah/j3dcore"/>
++    <copy todir="${build}/${platform}/debug/native/javah/j3dcore">
++        <fileset dir="${build}/${platform}/opt/native/javah/j3dcore"/>
++    </copy>
+ 
+     <!-- Copy the I18N property files while retaining package location -->
+     <copy todir="${build}/${platform}/debug/classes">
+--- a/j3d-core/src/classes/share/javax/media/j3d/Background.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/Background.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.*;
+ 
+ /**
+@@ -172,6 +173,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int SCALE_NONE = 0;
+ 
+     /**
+@@ -189,6 +191,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int SCALE_FIT_MIN = 1;
+ 
+     /**
+@@ -205,6 +208,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int SCALE_FIT_MAX = 2;
+ 
+ 
+@@ -219,6 +223,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int SCALE_FIT_ALL = 3;
+ 
+     /**
+@@ -231,6 +236,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int SCALE_REPEAT = 4; 
+ 
+     /**
+@@ -245,6 +251,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int SCALE_NONE_CENTER = 5; 
+     
+    // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/Canvas3D.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/Canvas3D.java
+@@ -34,6 +34,7 @@
+ import javax.vecmath.*;
+ import java.awt.*;
+ import java.awt.image.BufferedImage;
++import java.lang.annotation.Native;
+ import java.util.*;
+ 
+ 
+@@ -772,24 +773,41 @@
+     // Read-only flag that indicates whether the following texture features
+     // are supported for this canvas.
+ 
++    @Native
+     static final int TEXTURE_3D			= 0x0001;
++    @Native
+     static final int TEXTURE_COLOR_TABLE	= 0x0002;
++    @Native
+     static final int TEXTURE_MULTI_TEXTURE	= 0x0004;
++    @Native
+     static final int TEXTURE_COMBINE		= 0x0008;
++    @Native
+     static final int TEXTURE_COMBINE_DOT3	= 0x0010;
++    @Native
+     static final int TEXTURE_COMBINE_SUBTRACT	= 0x0020;
++    @Native
+     static final int TEXTURE_REGISTER_COMBINERS	= 0x0040;
++    @Native
+     static final int TEXTURE_CUBE_MAP		= 0x0080;
++    @Native
+     static final int TEXTURE_SHARPEN		= 0x0100;
++    @Native
+     static final int TEXTURE_DETAIL		= 0x0200;
++    @Native
+     static final int TEXTURE_FILTER4		= 0x0400;
++    @Native
+     static final int TEXTURE_ANISOTROPIC_FILTER	= 0x0800;
++    @Native
+     static final int TEXTURE_LOD_RANGE		= 0x1000;
++    @Native
+     static final int TEXTURE_LOD_OFFSET		= 0x2000;
+     // Use by D3D to indicate using one pass Blend mode 
+     // if Texture interpolation mode is support.
++    @Native
+     static final int TEXTURE_LERP               = 0x4000;
++    @Native
+     static final int TEXTURE_NON_POWER_OF_TWO	= 0x8000;
++    @Native
+     static final int TEXTURE_AUTO_MIPMAP_GENERATION = 0x10000;
+     
+     int textureExtendedFeatures = 0;
+@@ -798,9 +816,13 @@
+     //
+     // NOTE: we should remove EXT_BGR and EXT_ABGR when the imaging code is
+     // rewritten
++    @Native
+     static final int SUN_GLOBAL_ALPHA            = 0x1;
++    @Native
+     static final int EXT_ABGR                    = 0x2;
++    @Native
+     static final int EXT_BGR                     = 0x4;
++    @Native
+     static final int MULTISAMPLE                 = 0x8;
+ 
+     // The following 10 variables are set by the native
+--- a/j3d-core/src/classes/share/javax/media/j3d/ColoringAttributes.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/ColoringAttributes.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.Color3f;
+ 
+ /**
+@@ -119,19 +120,23 @@
+     /**
+      * Use the fastest available method for shading.
+      */
++    @Native
+     public static final int FASTEST            = 0;
+     /**
+      * Use the nicest available method for shading.
+      */
++    @Native
+     public static final int NICEST             = 1;
+ 
+     /**
+      * Do not interpolate color across the primitive.
+      */
++    @Native
+     public static final int SHADE_FLAT   = 2;
+     /**
+      * Smoothly interpolate the color at each vertex across the primitive.
+      */
++    @Native
+     public static final int SHADE_GOURAUD = 3;
+ 
+    // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/DepthComponentRetained.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/DepthComponentRetained.java
+@@ -31,6 +31,8 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
++
+ /**
+  * Abstract base class that defines a 2D array of depth (Z) values.
+  */
+@@ -38,8 +40,11 @@
+ 
+ abstract class DepthComponentRetained extends NodeComponentRetained {
+     // depth component types
++    @Native
+     static final int DEPTH_COMPONENT_TYPE_INT   = 1;
++    @Native
+     static final int DEPTH_COMPONENT_TYPE_FLOAT = 2;
++    @Native
+     static final int DEPTH_COMPONENT_TYPE_NATIVE = DEPTH_COMPONENT_TYPE_INT;
+ 
+ 
+--- a/j3d-core/src/native/ogl/gldefs.h
++++ b/j3d-core/src/native/ogl/gldefs.h
+@@ -128,56 +128,27 @@
+ #include "javax_media_j3d_Background.h"
+ #include "javax_media_j3d_Canvas3D.h"
+ #include "javax_media_j3d_ColoringAttributes.h"
+-#include "javax_media_j3d_ColoringAttributesRetained.h"
+ #include "javax_media_j3d_DepthComponentRetained.h"
+-#include "javax_media_j3d_DirectionalLightRetained.h"
+-#include "javax_media_j3d_DisplayListRenderMethod.h"
+ #include "javax_media_j3d_DrawingSurfaceObjectAWT.h"
+-#include "javax_media_j3d_ExponentialFogRetained.h"
+ #include "javax_media_j3d_GeometryRetained.h"
+ #include "javax_media_j3d_GeometryArray.h"
+ #include "javax_media_j3d_GeometryArrayRetained.h"
+-#include "javax_media_j3d_GraphicsContext3D.h"
+ #include "javax_media_j3d_ImageComponent.h"
+ #include "javax_media_j3d_ImageComponentRetained.h"
+-#include "javax_media_j3d_ImageComponent2DRetained.h"
+-#include "javax_media_j3d_IndexedGeometryArrayRetained.h"
+ #include "javax_media_j3d_LineAttributes.h"
+-#include "javax_media_j3d_LineAttributesRetained.h"
+-#include "javax_media_j3d_LinearFogRetained.h"
+-#include "javax_media_j3d_MasterControl.h"
+ #include "javax_media_j3d_Material.h"
+-#include "javax_media_j3d_MaterialRetained.h"
+-#include "javax_media_j3d_ModelClipRetained.h"
+ #include "javax_media_j3d_NativeConfigTemplate3D.h"
+ #include "javax_media_j3d_NativePipeline.h"
+-#include "javax_media_j3d_NodeRetained.h"
+-#include "javax_media_j3d_PointAttributesRetained.h"
+-#include "javax_media_j3d_PointLightRetained.h"
+ #include "javax_media_j3d_PolygonAttributes.h"
+-#include "javax_media_j3d_PolygonAttributesRetained.h"
+ #include "javax_media_j3d_Raster.h"
+-#include "javax_media_j3d_RasterRetained.h"
+-#include "javax_media_j3d_Renderer.h"
+ #include "javax_media_j3d_RenderingAttributes.h"
+ #include "javax_media_j3d_RenderingAttributesRetained.h"
+ #include "javax_media_j3d_RenderMolecule.h"
+-#include "javax_media_j3d_SpotLightRetained.h"
+ #include "javax_media_j3d_TexCoordGeneration.h"
+-#include "javax_media_j3d_TexCoordGenerationRetained.h"
+ #include "javax_media_j3d_Texture.h"
+ #include "javax_media_j3d_Texture2D.h"
+-#include "javax_media_j3d_Texture2DRetained.h"
+-#include "javax_media_j3d_Texture3DRetained.h"
+ #include "javax_media_j3d_TextureAttributes.h"
+-#include "javax_media_j3d_TextureAttributesRetained.h"
+-#include "javax_media_j3d_TextureCubeMapRetained.h"
+-#include "javax_media_j3d_TextureRetained.h"
+-#include "javax_media_j3d_TextureUnitStateRetained.h"
+ #include "javax_media_j3d_TransparencyAttributes.h"
+-#include "javax_media_j3d_TransparencyAttributesRetained.h"
+-#include "javax_media_j3d_GLSLShaderProgramRetained.h"
+-#include "javax_media_j3d_CgShaderProgramRetained.h"
+ #include "javax_media_j3d_Shader.h"
+ #include "javax_media_j3d_ShaderAttributeObjectRetained.h"
+ #include "javax_media_j3d_ShaderError.h"
+--- a/j3d-core/src/classes/share/javax/media/j3d/GeometryRetained.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/GeometryRetained.java
+@@ -31,34 +31,55 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.*;
+ import java.util.ArrayList;
+ 
+ abstract class GeometryRetained extends NodeComponentRetained {
+ 
++    @Native
+     static final int GEO_TYPE_NONE                        = -1;
+ 
++    @Native
+     static final int GEO_TYPE_QUAD_SET                    = 1;
++    @Native
+     static final int GEO_TYPE_TRI_SET                     = 2;
++    @Native
+     static final int GEO_TYPE_POINT_SET                   = 3;
++    @Native
+     static final int GEO_TYPE_LINE_SET                    = 4;
++    @Native
+     static final int GEO_TYPE_TRI_STRIP_SET               = 5;
++    @Native
+     static final int GEO_TYPE_TRI_FAN_SET                 = 6;
++    @Native
+     static final int GEO_TYPE_LINE_STRIP_SET              = 7;
+ 
++    @Native
+     static final int GEO_TYPE_INDEXED_QUAD_SET            = 8;
++    @Native
+     static final int GEO_TYPE_INDEXED_TRI_SET             = 9;
++    @Native
+     static final int GEO_TYPE_INDEXED_POINT_SET           = 10;
++    @Native
+     static final int GEO_TYPE_INDEXED_LINE_SET            = 11;
++    @Native
+     static final int GEO_TYPE_INDEXED_TRI_STRIP_SET       = 12;
++    @Native
+     static final int GEO_TYPE_INDEXED_TRI_FAN_SET         = 13;
++    @Native
+     static final int GEO_TYPE_INDEXED_LINE_STRIP_SET      = 14;
+ 
++    @Native
+     static final int GEO_TYPE_RASTER                      = 15;
++    @Native
+     static final int GEO_TYPE_TEXT3D                      = 16;
++    @Native
+     static final int GEO_TYPE_COMPRESSED                  = 17;
+ 
++    @Native
+     static final int GEO_TYPE_TOTAL                       = 17;
++    @Native
+     static final int GEO_TYPE_GEOMETRYARRAY               = 14;
+ 
+     BoundingBox geoBounds = new BoundingBox();
+--- a/j3d-core/src/classes/share/javax/media/j3d/GeometryArray.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/GeometryArray.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.*;
+ 
+ 
+@@ -224,38 +225,45 @@
+    * Specifies that this GeometryArray contains an array of coordinates.
+    * This bit must be set.
+    */
++  @Native
+   public static final int COORDINATES = 0x01;
+ 
+   /**
+    * Specifies that this GeometryArray contains an array of normals.
+    */
++  @Native
+   public static final int NORMALS = 0x02;
+ 
+   /**
+    * Specifies that this GeometryArray contains an array of colors.
+    */
++  @Native
+   static final int COLOR = 0x04;
+ 
+   /**
+    * Specifies that this GeometryArray's colors contain alpha.
+    */
++  @Native
+   static final int WITH_ALPHA = 0x08;
+ 
+   /**
+    * Specifies that this GeometryArray contains an array of colors without alpha.
+    */
++  @Native
+   public static final int COLOR_3 = COLOR;
+ 
+   /**
+    * Specifies that this GeometryArray contains an array of colors with alpha.
+    * This takes precedence over COLOR_3.
+    */
++  @Native
+   public static final int COLOR_4 = COLOR | WITH_ALPHA;
+ 
+   /**
+    * Specifies that this GeometryArray contains one or more arrays of
+    * 2D texture coordinates.
+    */
++  @Native
+   public static final int TEXTURE_COORDINATE_2 = 0x20;
+ 
+   /**
+@@ -263,6 +271,7 @@
+    * 3D texture coordinates.
+    * This takes precedence over TEXTURE_COORDINATE_2.
+    */
++  @Native
+   public static final int TEXTURE_COORDINATE_3 = 0x40;
+ 
+ 
+@@ -273,6 +282,7 @@
+    *
+    * @since Java 3D 1.3
+    */
++  @Native
+   public static final int TEXTURE_COORDINATE_4 = 0x400;
+ 
+ 
+@@ -286,6 +296,7 @@
+      *
+      * @since Java 3D 1.2
+      */
++    @Native
+     public static final int BY_REFERENCE = 0x80;
+ 
+ 
+@@ -299,6 +310,7 @@
+      *
+      * @since Java 3D 1.2
+      */
++    @Native
+     public static final int INTERLEAVED = 0x100;
+ 
+     /**
+@@ -319,6 +331,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int USE_NIO_BUFFER = 0x800;
+ 
+     /**
+@@ -335,6 +348,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int USE_COORD_INDEX_ONLY = 0x200;
+ 
+     /**
+@@ -344,6 +358,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int VERTEX_ATTRIBUTES = 0x1000;
+ 
+     //NVaidya
+@@ -356,9 +371,11 @@
+      *
+      * @since Java 3D 1.5
+      */
++    @Native
+     public static final int BY_REFERENCE_INDICES = 0x2000;
+ 
+     // Used to keep track of the last bit (for adding new bits only)
++    @Native
+     private static final int LAST_FORMAT_BIT = 0x2000;
+ 
+     // Scratch arrays for converting Point[234]f to TexCoord[234]f
+--- a/j3d-core/src/classes/share/javax/media/j3d/GeometryArrayRetained.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/GeometryArrayRetained.java
+@@ -34,6 +34,7 @@
+ import com.sun.j3d.internal.Distance;
+ import javax.vecmath.*;
+ import java.lang.Math;
++import java.lang.annotation.Native;
+ import java.util.ArrayList;
+ import java.util.Set;
+ import java.util.HashSet;
+@@ -209,12 +210,19 @@
+     private int vertexAttrType = 0;
+ 
+     // flag for execute geometry array when by reference
++    @Native
+     static final int COORD_FLOAT  = 0x01;
++    @Native
+     static final int COORD_DOUBLE = 0x02;
++    @Native
+     static final int COLOR_FLOAT  = 0x04;
++    @Native
+     static final int COLOR_BYTE   = 0x08;
++    @Native
+     static final int NORMAL_FLOAT = 0x10;
++    @Native
+     static final int TEXCOORD_FLOAT = 0x20;
++    @Native
+     static final int VATTR_FLOAT = 0x40;
+ 
+ 
+--- a/j3d-core/src/classes/share/javax/media/j3d/ImageComponent.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/ImageComponent.java
+@@ -31,6 +31,8 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
++
+ /**
+  * Abstract class that is used to define 2D or 3D ImageComponent
+  * classes used in a Java 3D scene graph.  This is used for texture
+@@ -112,72 +114,84 @@
+    * Specifies that each pixel contains 3 8-bit channels: one each
+    * for red, green, blue. Same as FORMAT_RGB8.
+    */
++    @Native
+     public static final int FORMAT_RGB = 1;
+ 
+   /**
+    * Specifies that each pixel contains 4 8-bit channels: one each
+    * for red, green, blue, alpha. Same as FORMAT_RGBA8.
+    */
++    @Native
+     public static final int FORMAT_RGBA = 2;
+ 
+   /**
+    * Specifies that each pixel contains 3 8-bit channels: one each
+    * for red, green, blue. Same as FORMAT_RGB.
+    */
++    @Native
+     public static final int FORMAT_RGB8 = FORMAT_RGB;
+ 
+   /**
+    * Specifies that each pixel contains 4 8-bit channels: one each
+    * for red, green, blue, alpha. Same as FORMAT_RGBA.
+    */
++    @Native
+     public static final int FORMAT_RGBA8 = FORMAT_RGBA;
+ 
+   /**
+    * Specifies that each pixel contains 3 5-bit channels: one each
+    * for red, green, blue.
+    */
++    @Native
+     public static final int FORMAT_RGB5 = 3;
+ 
+   /**
+    * Specifies that each pixel contains 3 5-bit channels: one each
+    * for red, green, blue and 1 1-bit channel for alpha.
+    */
++    @Native
+     public static final int FORMAT_RGB5_A1 = 4;
+ 
+   /**
+    * Specifies that each pixel contains 3 4-bit channels: one each
+    * for red, green, blue.
+    */
++    @Native
+     public static final int FORMAT_RGB4 = 5;
+ 
+   /**
+    * Specifies that each pixel contains 4 4-bit channels: one each
+    * for red, green, blue, alpha.
+    */
++    @Native
+     public static final int FORMAT_RGBA4 = 6;
+ 
+   /**
+    * Specifies that each pixel contains 2 4-bit channels: one each
+    * for luminance and alpha.
+    */
++    @Native
+     public static final int FORMAT_LUM4_ALPHA4 = 7;
+ 
+   /**
+    * Specifies that each pixel contains 2 8-bit channels: one each
+    * for luminance and alpha.
+    */
++    @Native
+     public static final int FORMAT_LUM8_ALPHA8 = 8;
+ 
+   /**
+    * Specifies that each pixel contains 2 3-bit channels: one each
+    * for red, green, and 1 2-bit channel for blue.
+    */
++    @Native
+     public static final int FORMAT_R3_G3_B2 = 9;
+ 
+   /**
+    * Specifies that each pixel contains 1 8-bit channel: it can be
+    * used for only luminance or only alpha or only intensity.
+    */
++    @Native
+     public static final int FORMAT_CHANNEL8 = 10;
+ 
+     // Internal variable for checking validity of formats
+--- a/j3d-core/src/classes/share/javax/media/j3d/ImageComponentRetained.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/ImageComponentRetained.java
+@@ -38,6 +38,7 @@
+ import java.awt.geom.AffineTransform;
+ import java.awt.image.AffineTransformOp;
+ import java.awt.image.RenderedImage;
++import java.lang.annotation.Native;
+ import java.nio.ByteBuffer;
+ import java.nio.ByteOrder;
+ import java.nio.IntBuffer;
+@@ -57,15 +58,25 @@
+     static final int IMAGE_CHANGED       = 0x01;
+     static final int SUBIMAGE_CHANGED    = 0x02;
+     
++    @Native
+     static final int TYPE_BYTE_BGR     =  0x1;
++    @Native
+     static final int TYPE_BYTE_RGB     =  0x2;
++    @Native
+     static final int TYPE_BYTE_ABGR    =  0x4;
++    @Native
+     static final int TYPE_BYTE_RGBA    =  0x8;
++    @Native
+     static final int TYPE_BYTE_LA      =  0x10;
++    @Native
+     static final int TYPE_BYTE_GRAY    =  0x20;
++    @Native
+     static final int TYPE_USHORT_GRAY  =  0x40;
++    @Native
+     static final int TYPE_INT_BGR      =  0x80;
++    @Native
+     static final int TYPE_INT_RGB      =  0x100;
++    @Native
+     static final int TYPE_INT_ARGB     =  0x200;
+     
+     static final int  IMAGE_SIZE_512X512 = 262144;
+@@ -84,9 +95,13 @@
+         TYPE_INT_ARGB
+     }
+     
++    @Native
+     static final int IMAGE_DATA_TYPE_BYTE_ARRAY     =  0x1000;
++    @Native
+     static final int IMAGE_DATA_TYPE_INT_ARRAY      =  0x2000;
++    @Native
+     static final int IMAGE_DATA_TYPE_BYTE_BUFFER    =  0x4000;
++    @Native
+     static final int IMAGE_DATA_TYPE_INT_BUFFER     =  0x8000;
+     
+     enum ImageDataType {
+--- a/j3d-core/src/classes/share/javax/media/j3d/LineAttributes.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/LineAttributes.java
+@@ -31,6 +31,8 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
++
+ /**
+  * The LineAttributes object defines all rendering state that can be set
+  * as a component object of a Shape3D node.
+@@ -153,6 +155,7 @@
+      * Draw solid lines with no pattern.
+      * @see #setLinePattern
+      */
++    @Native
+     public static final int PATTERN_SOLID = 0;
+ 
+     /**
+@@ -160,6 +163,7 @@
+      * a repeating pattern of 8 pixels on and 8 pixels off.
+      * @see #setLinePattern
+      */
++    @Native
+     public static final int PATTERN_DASH = 1;
+ 
+     /**
+@@ -167,6 +171,7 @@
+      * a repeating pattern of 1 pixel on and 7 pixels off.
+      * @see #setLinePattern
+      */
++    @Native
+     public static final int PATTERN_DOT = 2;
+ 
+     /**
+@@ -175,6 +180,7 @@
+      * and 4 pixels off.
+      * @see #setLinePattern
+      */
++    @Native
+     public static final int PATTERN_DASH_DOT = 3;
+ 
+     /**
+--- a/j3d-core/src/classes/share/javax/media/j3d/Material.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/Material.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.Color3f;
+ 
+ /**
+@@ -86,6 +87,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int AMBIENT = 0;
+ 
+     /**
+@@ -94,6 +96,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int EMISSIVE = 1;
+ 
+     /**
+@@ -103,6 +106,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int DIFFUSE = 2;
+ 
+     /**
+@@ -111,6 +115,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int SPECULAR = 3;
+ 
+     /**
+@@ -120,6 +125,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int AMBIENT_AND_DIFFUSE = 4;
+ 
+    // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/NativeConfigTemplate3D.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/NativeConfigTemplate3D.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import java.awt.GraphicsConfiguration;
+ 
+ /**
+@@ -39,16 +40,27 @@
+  */
+ abstract class NativeConfigTemplate3D {
+     //  These definitions are used by both the X11 and Win32 subclasses
++    @Native
+     final static int RED_SIZE		= 0;
++    @Native
+     final static int GREEN_SIZE		= 1;
++    @Native
+     final static int BLUE_SIZE		= 2;
++    @Native
+     final static int ALPHA_SIZE		= 3;
++    @Native
+     final static int ACCUM_BUFFER	= 4;
++    @Native
+     final static int DEPTH_SIZE		= 5;
++    @Native
+     final static int DOUBLEBUFFER	= 6;
++    @Native
+     final static int STEREO		= 7;
++    @Native
+     final static int ANTIALIASING	= 8;
++    @Native
+     final static int STENCIL_SIZE       = 9;
++    @Native
+     final static int NUM_ITEMS		= 10;
+ 
+     private static final String x11ClassName = "javax.media.j3d.X11NativeConfigTemplate3D";
+--- a/j3d-core/src/classes/share/javax/media/j3d/PolygonAttributes.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/PolygonAttributes.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ 
+ /**
+  * The PolygonAttributes object defines attributes for rendering polygon
+@@ -141,28 +142,34 @@
+      * Render polygonal primitives as points drawn at the vertices
+      * of the polygon.
+      */
++    @Native
+     public static final int POLYGON_POINT = 0;
+     /**
+      * Render polygonal primitives as lines drawn between consecutive
+      * vertices of the polygon.
+      */
++    @Native
+     public static final int POLYGON_LINE  = 1;
+     /**
+      * Render polygonal primitives by filling the interior of the polygon.
+      */
++    @Native
+     public static final int POLYGON_FILL  = 2;
+ 
+     /**
+      * Don't perform any face culling.
+      */
++    @Native
+     public static final int CULL_NONE  = 0;
+     /**
+      * Cull all back-facing polygons.  This is the default mode.
+      */
++    @Native
+     public static final int CULL_BACK  = 1;
+     /**
+      * Cull all front-facing polygons.
+      */
++    @Native
+     public static final int CULL_FRONT = 2;
+ 
+    // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/Raster.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/Raster.java
+@@ -34,7 +34,7 @@
+ import javax.vecmath.*;
+ import java.awt.Point;
+ import java.awt.Dimension;
+-
++import java.lang.annotation.Native;
+ 
+ /**
+  * The Raster object extends Geometry to allow drawing a raster image
+@@ -66,6 +66,7 @@
+      *
+      * @see #setType
+      */
++    @Native
+     public static final int RASTER_COLOR = 0x1;
+ 
+     /**
+@@ -75,6 +76,7 @@
+      *
+      * @see #setType
+      */
++    @Native
+     public static final int RASTER_DEPTH = 0x2;
+ 
+     /**
+--- a/j3d-core/src/classes/share/javax/media/j3d/RenderingAttributes.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/RenderingAttributes.java
+@@ -31,6 +31,8 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
++
+ /**
+  * The RenderingAttributes object defines common rendering attributes
+  * for all primitive types. The rendering attributes are:<p>
+@@ -387,6 +389,7 @@
+      * @see #setDepthTestFunction
+      * @see #setStencilFunction(int,int,int)
+      */
++    @Native
+     public static final int ALWAYS = 0;
+ 
+     /**
+@@ -399,6 +402,7 @@
+      * @see #setDepthTestFunction
+      * @see #setStencilFunction(int,int,int)
+      */
++    @Native
+     public static final int NEVER = 1;
+ 
+     /**
+@@ -410,6 +414,7 @@
+      * @see #setDepthTestFunction
+      * @see #setStencilFunction(int,int,int)
+      */
++    @Native
+     public static final int EQUAL = 2;
+ 
+     /**
+@@ -421,6 +426,7 @@
+      * @see #setDepthTestFunction
+      * @see #setStencilFunction(int,int,int)
+      */
++    @Native
+     public static final int NOT_EQUAL = 3;
+ 
+     /**
+@@ -433,6 +439,7 @@
+      * @see #setDepthTestFunction
+      * @see #setStencilFunction(int,int,int)
+      */
++    @Native
+     public static final int LESS = 4;
+ 
+     /**
+@@ -445,6 +452,7 @@
+      * @see #setDepthTestFunction
+      * @see #setStencilFunction(int,int,int)
+      */
++    @Native
+     public static final int LESS_OR_EQUAL = 5;
+ 
+     /**
+@@ -457,6 +465,7 @@
+      * @see #setDepthTestFunction
+      * @see #setStencilFunction(int,int,int)
+      */
++    @Native
+     public static final int GREATER = 6;
+ 
+     /**
+@@ -469,6 +478,7 @@
+      * @see #setDepthTestFunction
+      * @see #setStencilFunction(int,int,int)
+      */
++    @Native
+     public static final int GREATER_OR_EQUAL = 7;
+ 
+ 
+@@ -482,6 +492,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_CLEAR = 0x0;
+ 
+     /**
+@@ -490,6 +501,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_AND = 0x1;
+ 
+     /**
+@@ -498,6 +510,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_AND_REVERSE = 0x2;
+ 
+     /**
+@@ -506,6 +519,7 @@
+      *
+      * @since Java 3D 1.2
+      */
++    @Native
+     public static final int ROP_COPY = 0x3;
+ 
+     /**
+@@ -514,6 +528,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_AND_INVERTED = 0x4;
+ 		
+     /**
+@@ -522,6 +537,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_NOOP = 0x5;
+ 
+     /**
+@@ -530,6 +546,7 @@
+      *
+      * @since Java 3D 1.2
+      */
++    @Native
+     public static final int ROP_XOR = 0x6;
+ 
+     /**
+@@ -538,6 +555,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_OR = 0x7;
+ 
+     /**
+@@ -546,6 +564,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_NOR = 0x8;
+ 
+     /**
+@@ -554,6 +573,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_EQUIV = 0x9;
+ 		
+     /**
+@@ -562,6 +582,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_INVERT = 0xA;
+ 		
+     /**
+@@ -570,6 +591,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_OR_REVERSE = 0xB;
+ 
+     /**
+@@ -578,6 +600,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_COPY_INVERTED = 0xC;
+ 
+     /**
+@@ -586,6 +609,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_OR_INVERTED = 0xD;
+ 
+     /**
+@@ -594,6 +618,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_NAND = 0xE;
+ 
+     /**
+@@ -602,6 +627,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int ROP_SET = 0xF;
+ 
+ 
+@@ -615,6 +641,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int STENCIL_KEEP = 1;
+ 
+     /**
+@@ -623,6 +650,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int STENCIL_ZERO = 2;
+ 
+     /**
+@@ -631,6 +659,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int STENCIL_REPLACE = 3;
+ 
+     /**
+@@ -639,6 +668,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int STENCIL_INCR = 4;
+ 
+     /**
+@@ -647,6 +677,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int STENCIL_DECR = 5;
+ 
+     /**
+@@ -655,6 +686,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int STENCIL_INVERT = 6;
+ 
+    // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/RenderingAttributesRetained.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/RenderingAttributesRetained.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import java.util.ArrayList;
+ 
+ /**
+@@ -97,7 +98,9 @@
+ 
+     // depth buffer comparison function. Used by multi-texturing only
+     //[PEPE] NOTE: they are both unused. Candidates for removal.
++    @Native
+     static final int LESS = 0;
++    @Native
+     static final int LEQUAL = 1;
+ 
+     /**
+--- a/j3d-core/src/classes/share/javax/media/j3d/RenderMolecule.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/RenderMolecule.java
+@@ -32,6 +32,7 @@
+ package javax.media.j3d;
+ 
+ import javax.vecmath.*;
++import java.lang.annotation.Native;
+ import java.util.*;
+ 
+ /**
+@@ -51,10 +52,15 @@
+     /**
+      * Values for the geometryType field
+      */
++    @Native
+     static final int POINT      = 0x01;
++    @Native
+     static final int LINE       = 0x02;
++    @Native
+     static final int SURFACE    = 0x04;
++    @Native
+     static final int RASTER     = 0x08;
++    @Native
+     static final int COMPRESSED = 0x10; 
+ 
+     static int RM_COMPONENTS = (AppearanceRetained.POLYGON |
+--- a/j3d-core/src/classes/share/javax/media/j3d/TexCoordGeneration.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/TexCoordGeneration.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.Vector4f;
+ 
+ /**
+@@ -191,6 +192,7 @@
+      *
+      * @see #setGenMode
+      */
++    @Native
+     public static final int OBJECT_LINEAR = 0;
+     /**
+      * Generates texture coordinates as a linear function in
+@@ -198,6 +200,7 @@
+      *
+      * @see #setGenMode
+      */
++    @Native
+     public static final int EYE_LINEAR    = 1;
+     /**
+      * Generates texture coordinates using a spherical reflection
+@@ -205,6 +208,7 @@
+      *
+      * @see #setGenMode
+      */
++    @Native
+     public static final int SPHERE_MAP    = 2;
+     /**
+      * Generates texture coordinates that match vertices' normals in
+@@ -215,6 +219,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int NORMAL_MAP    = 3;
+     /**
+      * Generates texture coordinates that match vertices' reflection
+@@ -225,6 +230,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int REFLECTION_MAP = 4;
+ 
+     // Definitions for format
+@@ -233,12 +239,14 @@
+      *
+      * @see #setFormat
+      */
++    @Native
+     public static final int TEXTURE_COORDINATE_2 = 0;
+     /**
+      * Generates 3D texture coordinates (S, T, and R).
+      *
+      * @see #setFormat
+      */
++    @Native
+     public static final int TEXTURE_COORDINATE_3 = 1;
+     /**
+      * Generates 4D texture coordinates (S, T, R, and Q).
+@@ -247,6 +255,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int TEXTURE_COORDINATE_4 = 2;
+ 
+    // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/Texture.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/Texture.java
+@@ -32,6 +32,7 @@
+ package javax.media.j3d;
+ 
+ import javax.vecmath.*;
++import java.lang.annotation.Native;
+ import java.util.Hashtable;
+ 
+ /**
+@@ -378,6 +379,7 @@
+      * @see #setMinFilter
+ 	 * @see #setMagFilter
+ 	 */
++    @Native
+     public static final int FASTEST = 0;
+     /**
+      * Uses the nicest available method for processing geometry.
+@@ -386,6 +388,7 @@
+      * @see #setMinFilter
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int NICEST  = 1;
+ 
+     /**
+@@ -394,6 +397,7 @@
+      * @see #setMinFilter
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int BASE_LEVEL_POINT = 2;
+   
+     /**
+@@ -403,6 +407,7 @@
+      * @see #setMinFilter
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int BASE_LEVEL_LINEAR = 3;
+   
+     /**
+@@ -410,6 +415,7 @@
+      * Maps to NEAREST_MIPMAP_NEAREST.
+      * @see #setMinFilter
+      */
++    @Native
+     public static final int MULTI_LEVEL_POINT = 4;
+   
+     /**
+@@ -419,6 +425,7 @@
+      * fall back to LINEAR_MIPMAP_NEAREST or NEAREST_MIPMAP_LINEAR.
+      * @see #setMinFilter
+      */
++    @Native
+     public static final int MULTI_LEVEL_LINEAR    = 5;
+ 
+     // NOTE: values 6, 7, and 8 are reserved for the LINEAR_DETAIL*
+@@ -432,6 +439,7 @@
+      * @since Java 3D 1.3
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int LINEAR_SHARPEN        = 9;
+ 
+     /**
+@@ -442,6 +450,7 @@
+      * @since Java 3D 1.3
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int LINEAR_SHARPEN_RGB    = 10;
+ 
+     /**
+@@ -452,6 +461,7 @@
+      * @since Java 3D 1.3
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int LINEAR_SHARPEN_ALPHA  = 11;
+ 
+     /**
+@@ -462,6 +472,7 @@
+      * @see #setMinFilter
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int FILTER4               = 12;
+   
+     // Texture boundary mode parameter values
+@@ -471,12 +482,14 @@
+      * width is 0 will be used for U,V values that fall
+      * outside this range.
+      */
++    @Native
+     public static final int CLAMP  = 2;
+     /**
+      * Repeats the texture by wrapping texture coordinates that are outside
+      * the range [0,1].  Only the fractional portion of the texture
+      * coordinates is used; the integer portion is discarded.
+      */
++    @Native
+     public static final int WRAP = 3;
+     /**
+      * Clamps texture coordinates such that filtering
+@@ -485,6 +498,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int CLAMP_TO_EDGE = 4;
+     /**
+      * Clamps texture coordinates such that filtering
+@@ -494,6 +508,7 @@
+      *
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int CLAMP_TO_BOUNDARY = 5;
+ 
+ 
+@@ -501,6 +516,7 @@
+      * Indicates that Texture object only has one level. If multiple
+      * levels are needed, they will be implicitly computed.
+      */
++    @Native
+     public static final int BASE_LEVEL = 1;
+ 
+     /**
+@@ -509,6 +525,7 @@
+      * <code>log<sub><font size=-2>2</font></sub>(max(width,height))+1</code>
+      * separate images.
+      */
++    @Native
+     public static final int MULTI_LEVEL_MIPMAP = 2;
+ 
+     // Texture format parameter values
+@@ -516,32 +533,38 @@
+     /**
+      * Specifies Texture contains only Intensity values.
+      */
++    @Native
+     public static final int INTENSITY = 1;
+ 
+     /**
+      * Specifies Texture contains only luminance values.
+      */
++    @Native
+     public static final int LUMINANCE = 2;
+ 
+     /**
+      * Specifies Texture contains only Alpha values.
+      */
++    @Native
+     public static final int ALPHA = 3;
+ 
+     /**
+      * Specifies Texture contains Luminance and Alpha values.
+      */
++    @Native
+     public static final int LUMINANCE_ALPHA = 4;
+ 
+     /**
+      * Specifies Texture contains Red, Green and Blue color values.
+      */
++    @Native
+     public static final int RGB = 5;
+ 
+     /**
+      * Specifies Texture contains Red, Green, Blue color values
+      * and Alpha value.
+      */
++    @Native
+     public static final int RGBA = 6;
+ 
+     /**
+@@ -550,6 +573,7 @@
+      * @since Java 3D 1.3
+      * @see #setAnisotropicFilterMode
+      */
++    @Native
+     public static final int ANISOTROPIC_NONE = 0;
+ 
+     /**
+@@ -559,6 +583,7 @@
+      * @since Java 3D 1.3
+      * @see #setAnisotropicFilterMode
+      */
++    @Native
+     public static final int ANISOTROPIC_SINGLE_VALUE = 1;
+ 
+        // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/Texture2D.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/Texture2D.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.*;
+ 
+ 
+@@ -72,6 +73,7 @@
+      * @since Java 3D 1.3
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int LINEAR_DETAIL         = 6;
+ 
+     /**
+@@ -84,6 +86,7 @@
+      * @since Java 3D 1.3
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int LINEAR_DETAIL_RGB     = 7;
+ 
+     /**
+@@ -96,6 +99,7 @@
+      * @since Java 3D 1.3
+      * @see #setMagFilter
+      */
++    @Native
+     public static final int LINEAR_DETAIL_ALPHA   = 8;
+ 
+     /**
+--- a/j3d-core/src/classes/share/javax/media/j3d/TextureAttributes.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/TextureAttributes.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.Color4f;
+ 
+ /**
+@@ -253,6 +254,7 @@
+      * Use the fastest available method for perspective correction.
+      * @see #setPerspectiveCorrectionMode
+      */
++    @Native
+     public static final int FASTEST            = 0;
+ 
+     /**
+@@ -260,30 +262,35 @@
+      * mapping perspective correction.
+      * @see #setPerspectiveCorrectionMode
+      */
++    @Native
+     public static final int NICEST             = 1;
+ 
+     /**
+      * Modulate the object color with the texture color.
+      * @see #setTextureMode
+      */
++    @Native
+     public static final int MODULATE = 2;
+ 
+     /**
+      * Apply the texture color to the object as a decal.
+      * @see #setTextureMode
+      */
++    @Native
+     public static final int DECAL    = 3;
+ 
+     /**
+      * Blend the texture blend color with the object color.
+      * @see #setTextureMode
+      */
++    @Native
+     public static final int BLEND    = 4;
+ 
+     /**
+      * Replace the object color with the texture color.
+      * @see #setTextureMode
+      */
++    @Native
+     public static final int REPLACE  = 5;
+   
+     /**
+@@ -293,6 +300,7 @@
+      * @see #setTextureMode
+      * @since Java 3D 1.3
+      */
++    @Native
+     public static final int COMBINE  = 6;
+     
+ 
+@@ -303,6 +311,7 @@
+      * @see #setCombineRgbMode
+      * @see #setCombineAlphaMode
+      */
++    @Native
+     public static final int COMBINE_REPLACE     = 0;
+ 
+     /**
+@@ -312,6 +321,7 @@
+      * @see #setCombineRgbMode
+      * @see #setCombineAlphaMode
+      */
++    @Native
+     public static final int COMBINE_MODULATE    = 1;
+ 
+     /**
+@@ -321,6 +331,7 @@
+      * @see #setCombineRgbMode
+      * @see #setCombineAlphaMode
+      */
++    @Native
+     public static final int COMBINE_ADD         = 2;
+ 
+     /**
+@@ -330,6 +341,7 @@
+      * @see #setCombineRgbMode
+      * @see #setCombineAlphaMode
+      */
++    @Native
+     public static final int COMBINE_ADD_SIGNED  = 3;
+ 
+     /**
+@@ -339,6 +351,7 @@
+      * @see #setCombineRgbMode
+      * @see #setCombineAlphaMode
+      */
++    @Native
+     public static final int COMBINE_SUBTRACT    = 4;
+ 
+     /**
+@@ -348,6 +361,7 @@
+      * @see #setCombineRgbMode
+      * @see #setCombineAlphaMode
+      */
++    @Native
+     public static final int COMBINE_INTERPOLATE = 5;
+ 
+     /**
+@@ -357,6 +371,7 @@
+      * @see #setCombineRgbMode
+      * @see #setCombineAlphaMode
+      */
++    @Native
+     public static final int COMBINE_DOT3        = 6;
+ 
+    
+@@ -367,6 +382,7 @@
+      * @see #setCombineRgbSource
+      * @see #setCombineAlphaSource
+      */
++    @Native
+     public static final int COMBINE_OBJECT_COLOR	= 0;
+ 
+     /**
+@@ -376,6 +392,7 @@
+      * @see #setCombineRgbSource
+      * @see #setCombineAlphaSource
+      */
++    @Native
+     public static final int COMBINE_TEXTURE_COLOR	= 1;
+ 
+     /**
+@@ -385,6 +402,7 @@
+      * @see #setCombineRgbSource
+      * @see #setCombineAlphaSource
+      */
++    @Native
+     public static final int COMBINE_CONSTANT_COLOR	= 2;
+ 
+     /**
+@@ -394,6 +412,7 @@
+      * @see #setCombineRgbSource
+      * @see #setCombineAlphaSource
+      */
++    @Native
+     public static final int COMBINE_PREVIOUS_TEXTURE_UNIT_STATE	= 3;
+ 
+     /** 
+@@ -402,6 +421,7 @@
+      * @since Java 3D 1.3
+      * @see #setCombineRgbFunction
+      */
++    @Native
+     public static final int COMBINE_SRC_COLOR		= 0;
+ 
+     /** 
+@@ -410,6 +430,7 @@
+      * @since Java 3D 1.3
+      * @see #setCombineRgbFunction
+      */
++    @Native
+     public static final int COMBINE_ONE_MINUS_SRC_COLOR	= 1;
+ 
+     /** 
+@@ -419,6 +440,7 @@
+      * @see #setCombineRgbFunction
+      * @see #setCombineAlphaFunction
+      */
++    @Native
+     public static final int COMBINE_SRC_ALPHA		= 2;
+ 
+     /** 
+@@ -428,6 +450,7 @@
+      * @see #setCombineRgbFunction
+      * @see #setCombineAlphaFunction
+      */
++    @Native
+     public static final int COMBINE_ONE_MINUS_SRC_ALPHA	= 3;
+ 
+    // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/TransparencyAttributes.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/TransparencyAttributes.java
+@@ -31,6 +31,8 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
++
+ /**
+  * The TransparencyAttributes object defines all attributes affecting
+  * transparency of the object. The transparency attributes are:<p>
+@@ -146,12 +148,14 @@
+      * Use the fastest available method for transparency.
+      * @see #setTransparencyMode
+      */
++    @Native
+     public static final int FASTEST            = 0;
+ 
+     /**
+      * Use the nicest available method for transparency.
+      * @see #setTransparencyMode
+      */
++    @Native
+     public static final int NICEST             = 1;
+ 
+     /**
+@@ -180,6 +184,7 @@
+      * @see #setSrcBlendFunction
+      * @see #setDstBlendFunction
+      */
++    @Native
+     public static final int BLENDED     = 2;
+ 
+     /**
+@@ -189,12 +194,14 @@
+      * parameter.
+      * @see #setTransparencyMode
+      */
++    @Native
+     public static final int SCREEN_DOOR = 3;
+ 
+     /**
+      * No transparency, opaque object.
+      * @see #setTransparencyMode
+      */
++    @Native
+     public static final int NONE     = 4;
+ 
+     /**
+@@ -204,6 +211,7 @@
+      *
+      * @since Java 3D 1.2
+      */
++    @Native
+     public static final int BLEND_ZERO = 0;
+ 
+     /**
+@@ -213,6 +221,7 @@
+      *
+      * @since Java 3D 1.2
+      */
++    @Native
+     public static final int BLEND_ONE = 1;
+ 
+     /**
+@@ -223,6 +232,7 @@
+      *
+      * @since Java 3D 1.2
+      */
++    @Native
+     public static final int BLEND_SRC_ALPHA = 2;
+ 
+     /**
+@@ -233,6 +243,7 @@
+      *
+      * @since Java 3D 1.2
+      */
++    @Native
+     public static final int BLEND_ONE_MINUS_SRC_ALPHA = 3;
+ 
+     /**
+@@ -244,6 +255,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int BLEND_DST_COLOR = 4;
+ 
+     /**
+@@ -255,6 +267,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int BLEND_ONE_MINUS_DST_COLOR = 5;
+ 
+     /**
+@@ -266,6 +279,7 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int BLEND_SRC_COLOR = 6;
+ 
+     /**
+@@ -277,10 +291,13 @@
+      *
+      * @since Java 3D 1.4
+      */
++    @Native
+     public static final int BLEND_ONE_MINUS_SRC_COLOR = 7;
+ 
++    @Native
+     static final int BLEND_CONSTANT_COLOR = 8;
+ 
++    @Native
+     static final int MAX_BLEND_FUNC_TABLE_SIZE = 9;
+ 
+    // Array for setting default read capabilities
+--- a/j3d-core/src/classes/share/javax/media/j3d/Shader.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/Shader.java
+@@ -31,6 +31,8 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
++
+ /**
+  * The Shader object is the abstract base class for programmable
+  * shader code. Currently, only text-based source code shaders are
+@@ -101,6 +103,7 @@
+      * shader.  It is one of the possible values of the shaderType
+      * parameter.
+      */
++    @Native
+     public static final int SHADER_TYPE_VERTEX = 1;
+ 
+     /**
+@@ -108,6 +111,7 @@
+      * shader.  It is one of the possible values of the shaderType
+      * parameter.
+      */
++    @Native
+     public static final int SHADER_TYPE_FRAGMENT = 2;
+ 
+ 
+--- a/j3d-core/src/classes/share/javax/media/j3d/ShaderAttributeObjectRetained.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/ShaderAttributeObjectRetained.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import java.util.ArrayList;
+ import javax.vecmath.*;
+ 
+@@ -184,15 +185,25 @@
+     // the tables of classes, so the values must start at 0 and
+     // increment by 1. Also, the order must be the same as the order
+     // of the entries in each of the two class tables.
++    @Native
+     static final int TYPE_INTEGER  =  0;
++    @Native
+     static final int TYPE_FLOAT    =  1;
++    @Native
+     static final int TYPE_TUPLE2I  =  2;
++    @Native
+     static final int TYPE_TUPLE2F  =  3;
++    @Native
+     static final int TYPE_TUPLE3I  =  4;
++    @Native
+     static final int TYPE_TUPLE3F  =  5;
++    @Native
+     static final int TYPE_TUPLE4I  =  6;
++    @Native
+     static final int TYPE_TUPLE4F  =  7;
++    @Native
+     static final int TYPE_MATRIX3F =  8;
++    @Native
+     static final int TYPE_MATRIX4F =  9;
+ 
+     // Double-precision is not supported in the current version. Uncomment the
+--- a/j3d-core/src/classes/share/javax/media/j3d/ShaderError.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/ShaderError.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import java.io.PrintStream;
+ 
+ /**
+@@ -56,28 +57,33 @@
+     /**
+      * Indicates that no error occurred.
+      */
++    @Native
+     public static final int NO_ERROR = 0;
+ 
+     /**
+      * Indicates that an error occurred while compiling a shader.
+      */
++    @Native
+     public static final int COMPILE_ERROR = 1;
+ 
+     /**
+      * Indicates that an error occurred while linking a shader.
+      */
++    @Native
+     public static final int LINK_ERROR = 2;
+ 
+     /**
+      * Indicates a error in looking up a vertex attribute
+      * name within a given shader program.
+      */
++    @Native
+     public static final int VERTEX_ATTRIBUTE_LOOKUP_ERROR = 3;
+ 
+     /**
+      * Indicates a error in looking up the location of a uniform
+      * shader attribute name within a given shader program.
+      */
++    @Native
+     public static final int SHADER_ATTRIBUTE_LOOKUP_ERROR = 4;
+ 
+     /**
+@@ -85,18 +91,21 @@
+      * appear in the list of shader attribute names in the corresponding
+      * ShaderProgram object.
+      */
++    @Native
+     public static final int SHADER_ATTRIBUTE_NAME_NOT_SET_ERROR = 5;
+ 
+     /**
+      * Indicates a error in the type of the attribute versus what the shader
+      * program was expecting.
+      */
++    @Native
+     public static final int SHADER_ATTRIBUTE_TYPE_ERROR = 6;
+ 
+     /**
+      * Indicates that the specified shading language is not supported
+      * on the screen display device.
+      */
++    @Native
+     public static final int UNSUPPORTED_LANGUAGE_ERROR = 7;
+ 
+ 
+--- a/j3d-core/src/classes/share/javax/media/j3d/ColoringAttributesRetained.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/ColoringAttributesRetained.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.Color3f;
+ import java.util.ArrayList;
+ 
+@@ -41,7 +42,9 @@
+ class ColoringAttributesRetained extends NodeComponentRetained {
+     // A list of pre-defined bits to indicate which component
+     // in this ColoringAttributes object changed.
++    @Native
+     static final int COLOR_CHANGED      	= 0x01;
++    @Native
+     static final int SHADE_MODEL_CHANGED      	= 0x02;
+ 
+     // Intrinsic color used when lighting is disabled or when
+--- a/j3d-core/src/classes/share/javax/media/j3d/DirectionalLightRetained.java
++++ b/j3d-core/src/classes/share/javax/media/j3d/DirectionalLightRetained.java
+@@ -31,6 +31,7 @@
+ 
+ package javax.media.j3d;
+ 
++import java.lang.annotation.Native;
+ import javax.vecmath.*;
+ 
+ /**
+@@ -39,6 +40,7 @@
+ 
+ class DirectionalLightRetained extends LightRetained
+ {
++    @Native
+     static final int DIRECTION_CHANGED        = LAST_DEFINED_BIT << 1;
+ 
+     // The direction in which this light source is pointing.
