@@ -108,7 +108,7 @@ option is not specified the default is @samp{27}.")
    "Claim the given name on @code{dbus}. This option overrides the default
 of @samp{com.intel.tss2.Tabrmd}.")
   (prng-seed-file
-   (maybe-string #f)
+   maybe-string
    "Read seed for pseudo-random number generator from the provided file.")
   (session
    (boolean #f)
