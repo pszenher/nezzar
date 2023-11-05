@@ -124,7 +124,8 @@ daemon connects to the system dbus."))
      (start #~(make-forkexec-constructor
 	       (cons #$(file-append package "/sbin/tpm2-abrmd")
 		     (string-split
-		      (serialize-configuration config)
+		      ;; FIXME:  this is broken (not gexped, and wrong num of args...)
+		      #$(serialize-configuration config)
 		      #\newline))
 	       #:user "tss"
 	       #:group "tss"
