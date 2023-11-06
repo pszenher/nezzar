@@ -40,8 +40,18 @@
 ;;; | HELPER FUNCTIONS
 ;;; ================================================================
 
-(define (specified=> func)
-  (lambda (val) (if (unspecified? val) val (func val))))
+(define* (optional #:key (func identity) (default '()))
+  (lambda (val) (if (unspecified? val) default (func val))))
+
+(define (assert-member lst)
+  (when (not (list? lst))
+    (error (format #f "Error: cannot bind assert-member on non-list object '~a'" lst)))
+  (lambda (val)
+    (if (member val lst) val
+	(error
+	 (format
+	  #f "Assertion Error: passed value '~a' is not member of allowlist '~a'"
+	  val lst)))))
 
 (define (assert-string str-val)
   "Return a function of a single string argument STR, which returns STR
@@ -85,35 +95,30 @@ with updated tails."
   yaml->rosdistro-index
   (distributions rosdistro-index-distributions "distributions" (make-tail-map yaml->rosdistro-index-dist))
   (type          rosdistro-index-type          "type"          (assert-string "index"))
-  (version       rosdistro-index-version       "version"))    ; integer: {1,2,3,4}
+  (version       rosdistro-index-version       "version"       (assert-member '(1 2 3 4))))
 
 (define-json-mapping <rosdistro-index-dist> make-rosdistro-index-dist rosdistro-index-dist?
   yaml->rosdistro-index-dist
 
   ;; string: list of reference to the distribution files (typically length 1 can be more)
   ;; 
-  (distribution        rosdistro-index-dist-distribution "distribution" vector->list)
+  (distribution        rosdistro-index-dist-distribution "distribution" vector->list) 
   
-  ;; string: not documented, assuming release_cache equivalent
+  ;; string: not documented, assuming same rules as release_cache
   ;; 
   ;; REP 141: 'reference to a release cache. Whether this field is a
   ;;           dictionary, a list or a scalar is left as an
   ;;           implementation detail.'
   ;;          'assume url format'
   ;; 
-  (distribution-cache  rosdistro-index-dist-distribution-cache "distribution_cache")
-  
-  ;; string: {"prerelase","active","end-of-life","rolling"}
-  ;; 
-  (distribution-status rosdistro-index-dist-distribution-status "distribution_status")
-  
-  ;; string: {"ros1","ros2"}
-  ;; 
-  (distribution-type   rosdistro-index-dist-distribution-type "distribution_type")
-  
-  ;; integer: python major version {2,3}
-  ;; 
-  (python-version      rosdistro-index-dist-python-version    "python_version"))
+  (distribution-cache  rosdistro-index-dist-distribution-cache "distribution_cache"
+		       (optional #:default #f))
+  (distribution-status rosdistro-index-dist-distribution-status "distribution_status"
+		       (assert-member '("prerelease" "active" "end-of-life" "rolling")))
+  (distribution-type   rosdistro-index-dist-distribution-type "distribution_type"
+		       (assert-member '("ros1" "ros2")))
+  (python-version      rosdistro-index-dist-python-version    "python_version"
+		       (assert-member '(2 3))))
 
 (define-json-mapping <rosdistro-distribution> make-rosdistro-distribution rosdistro-distribution?
   yaml->rosdistro-distribution
@@ -122,14 +127,14 @@ with updated tails."
 		     )
   (repositories      rosdistro-distribution-repositories      "repositories"      (make-tail-map yaml->ros-repository))
   (type              rosdistro-distribution-type              "type"   (assert-string "distribution"))
-  (version           rosdistro-distribution-version           "version")) ; integer: {1,2}
+  (version           rosdistro-distribution-version           "version" (assert-member '(1 2)))) ; integer: {1,2}
 
 
 (define-json-mapping <ros-repository> make-ros-repository ros-repository?
   yaml->ros-repository
-  (release            ros-repository-release            "release" (specified=> yaml->repo-release))
-  (source             ros-repository-source             "source"  (specified=> yaml->repo-source))
-  (doc                ros-repository-doc                "doc"     (specified=> yaml->repo-doc))
+  (release            ros-repository-release            "release" (optional yaml->repo-release))
+  (source             ros-repository-source             "source"  (optional yaml->repo-source))
+  (doc                ros-repository-doc                "doc"     (optional yaml->repo-doc))
 
   ;; string:
   ;;   {"developed","maintained","unmaintained","end-of-life"}
@@ -321,7 +326,5 @@ with updated tails."
 ;; (define* (rosdistro-fetch-rosdep #:key (fetch-func ())))
 
 (format #t "~y~%"
-	(ros-repository-source
-	 (cdar
-	  (rosdistro-distribution-repositories
-	   (rosdistro-fetch-distro "humble")))))
+	(rosdistro-distribution-repositories
+	 (rosdistro-fetch-distro "humble")))
