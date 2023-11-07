@@ -469,14 +469,20 @@ with updated tails."
 		(ros-name->guix-name pkg-name distro-name))
 	      (package-manifest->build-deps package-manifest)))
       ,@(maybe-propagated-inputs
-	 (map (lambda (pkg-name)
-		(ros-name->guix-name pkg-name distro-name))
+	 (map (lambda (dep-name)
+		(let ((repo-or-dep (resolve-ros-package-name dep-name)))
+		  (cond
+		   ((ros-repository? repo-or-dep) (ros-name->guix-name dep-name distro-name))
+		   ((rosdep-package? repo-or-dep) (or (rosdep-package-search repo-or-dep)
+						      (rosdep-package-name repo-or-dep)))
+		   (else
+		    (error (string-append "Failed to resolve ROS Dependency Name:  " dep-name))))
+		  (ros-name->guix-name dep-name distro-name)))
 	      (package-manifest->runtime-deps)))
-
       ;; FIXME: what keys are these in package.xml?
       (home-page ,(package-manifest-homepage package-manifest))
       (synopsis #f)
-      (description #f)
+      (description (package-manifest-description package-manifest))
       (license #f))))
 
 (format #t "~y~%"
