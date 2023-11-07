@@ -1,18 +1,24 @@
 (define-module (nezzar import rosdistro)
-  #:use-module (guix git)
-  #:use-module (yaml)
-  #:use-module (json)
-  #:use-module (guix import json)
-  #:use-module ((gnu packages guile-xyz) #:select (guile-libyaml))
-
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-71)
-  #:use-module (ice-9 format)
 
-  ;; #:export (rosdistro-fetch-repo
-  ;; 	    rosdistro-fetch-distro)
-  )
+  #:use-module (ice-9 format)
+  #:use-module (ice-9 ftw)
+  #:use-module (ice-9 receive)
+  
+  #:use-module (yaml)
+  #:use-module (json)
+
+  #:use-module (guix git)
+  #:use-module (guix hash)
+  #:use-module (guix base32)
+
+  #:use-module (guix import utils)
+  #:use-module (guix import json)
+
+  #:use-module ((gnu packages guile-xyz) #:select (guile-libyaml)))
 
 
 ;;; ================================================================
@@ -40,7 +46,7 @@
 ;;; | HELPER FUNCTIONS
 ;;; ================================================================
 
-(define* (optional #:key (func identity) (default '()))
+(define* (optional #:optional (func identity) #:key (default *unspecified*))
   (lambda (val) (if (unspecified? val) default (func val))))
 
 (define (assert-member lst)
@@ -132,9 +138,9 @@ with updated tails."
 
 (define-json-mapping <ros-repository> make-ros-repository ros-repository?
   yaml->ros-repository
-  (release            ros-repository-release            "release" (optional yaml->repo-release))
-  (source             ros-repository-source             "source"  (optional yaml->repo-source))
-  (doc                ros-repository-doc                "doc"     (optional yaml->repo-doc))
+  (release            ros-repository-release            "release" (optional yaml->repo-release #:default #f))
+  (source             ros-repository-source             "source"  (optional yaml->repo-source  #:default #f))
+  (doc                ros-repository-doc                "doc"     (optional yaml->repo-doc     #:default #f))
 
   ;; string:
   ;;   {"developed","maintained","unmaintained","end-of-life"}
@@ -146,7 +152,7 @@ with updated tails."
   ;;   status of the repository. For example detailing the reason for
   ;;   EOL and the recommended upgrade path.
   ;; 
-  (status-description ros-repository-status-description "status_description") 
+  (status-description ros-repository-status-description "status_description")
   (status-per-package ros-repository-status-per-package "status_per_package"
 		      ;; (make-tail-map
 		      ;;  yaml->repo-status-per-package)
@@ -155,6 +161,8 @@ with updated tails."
 (define-json-mapping <repo-release> make-repo-release repo-release?
   yaml->repo-release
 
+  ;; FIXME: we're gonna need the name field here...
+  
   ;; string:
   ;;   url of release git repository
   ;; 
@@ -248,8 +256,78 @@ with updated tails."
   (depends repo-doc-depends "depends"))
 
 
+(define-record-type <rosdep-yaml>
+  (make-rosdep-yaml packages)
+  rosdep-yaml?
+  (packages rosdep-yaml-packages))
+
+(define (yaml->rosdep-yaml yaml)
+  (make-rosdep-yaml
+   (map yaml->rosdep-package yaml)))
 
 
+(define-record-type <rosdep-package>
+  (make-rosdep-package name operating-systems)
+  rosdep-package?
+  (name rosdep-package-name)
+  (operating-systems rosdep-package-operating-system))
+
+(define (yaml->rosdep-package yaml)
+  (let ((name os-yaml (car+cdr yaml)))
+    (make-rosdep-package
+     name
+     (append-map yaml->rosdep-operating-system os-yaml))))
+
+
+(define-record-type <rosdep-operating-system>
+  (make-rosdep-operating-system name versions )
+  rosdep-operating-system?
+  
+  ;; string:
+  ;;   valid set not formally defined but exhaustive list of those
+  ;;   used in 'base.yaml' should get pretty close
+  ;; 
+  (name rosdep-operating-system-name)
+  (versions rosdep-operating-system-versions))
+
+(define (yaml->rosdep-operating-system yaml)
+  (let* ((name vers-yaml (car+cdr yaml)))
+    (make-rosdep-operating-system
+     name (map yaml->rosdep-os-version vers-yaml))))
+
+
+(define-record-type <rosdep-os-version>
+  (make-rosdep-os-version version package-manager package-keys)
+  rosdep-os-version?
+
+  ;; string (optional):
+  ;;   string version ID applied to operating system name above
+  ;;
+  (version rosdep-os-version-version)
+
+  ;; string (optional):
+  ;;   string name of package manager to use when looking up keys
+  ;;
+  (package-manager rosdep-os-version-package-manager)
+
+  ;; list-of-strings:
+  ;;   list of string keys to be passed to 'pkg-mngr' for installation
+  ;;   on os 'name'
+  ;;
+  (package-keys rosdep-os-version-package-keys))
+
+(define (yaml->rosdep-os-version yaml)
+;;; FIXME: this whole thing should be a match-let...
+  (let* ((vers-or-pkgmngr sub-yaml (car+cdr yaml))
+	 (version pkg-mngr
+		  (cond
+		   ((vector? sub-yaml) (values #f #f))
+		   ((string=? (caar sub-yaml)) (values #f vers-or-pkgmngr))
+		   (else (values vers-or-pkgmngr (caar sub-yaml))))))
+    (make-rosdep-os-version
+     version
+     pkg-mngr
+     (cdar sub-yaml))))
 
 ;;; ================================================================
 ;;; | DATA FETCHING
@@ -291,8 +369,6 @@ with updated tails."
    #:starting-commit #f
    #:log-port (current-error-port)))
 
-;; (define* (rosdistro-fetch))
-
 (define* (rosdistro-fetch-distro name #:key (rosdistro-index-file #f))
   (let* ((index-file    (or rosdistro-index-file
 			    (string-append
@@ -323,7 +399,85 @@ with updated tails."
 		    ;; FIXME:  use datastructure-agnostic method for elt ref
 		    (car distro-files)))))))
 
-;; (define* (rosdistro-fetch-rosdep #:key (fetch-func ())))
+(define* (rosdistro-fetch-rosdep #:key (yaml-files #f))
+  (let* ((yaml-files  (or yaml-files
+			  (let ((rosdep-dir (string-append
+					     (rosdistro-fetch-repo) "/rosdep")))
+			    (map (cut string-append rosdep-dir "/" <>)
+				 (scandir rosdep-dir (cut string-suffix? ".yaml" <>))))))
+	 (rosdep-yamls (map (compose yaml->rosdep-yaml read-yaml-file) yaml-files)))
+    rosdep-yamls))
+
+(define* (repo-release-tag-formatted release #:key (package #f) (tag "release"))
+  ;; TODO: use match-record here to preserve sanity...
+  (let ((tag-fmt-string (assoc-ref (repo-release-tags release) tag))
+	(package-name   (or package (repo-release-name release)))
+	(version        (repo-release-version release)))
+    ;; TODO: regex extract fields from between curly braces
+    ;;         - error on non-existent curly-brace keys
+    ;;         - handle multiple packages in repo
+    (error "Not Implemented.")))
+
+(define (rosdistro-release-fetch release package-name)
+  (receive (checkout commit _)
+      (update-cached-checkout
+       (repo-release-url release)
+       #:ref `(tag . ,(repo-release-tag-formatted
+		       release
+		       #:package package-name))
+       #:recursive? #f
+       #:check-out? #t
+       #:starting-commit #f
+       #:log-port (current-error-port))
+    checkout))
+
+(define (rosdistro-release->origin release package-name)
+  `(origin
+     (method git-fetch)
+     (uri
+      (git-reference
+       (url
+	,(repo-release-url release))
+       (commit
+	,(repo-release-tag-formatted release #:package package-name))))
+     (file-name (git-file-name name version))
+     (sha256
+      (base32
+       ,(bytevector->nix-base32-string
+	 (file-hash* (rosdistro-release-fetch release package-name)
+		     #:recursive? #t))))))
+
+(define (ros-name->guix-name name distro)
+  (string-join
+   (cons* "ros" distro (string-split name "_"))
+   "-"))
+
+(define* (rosdistro->guix-package package-name #:key rosdistro)
+  (let* ((distro-name (ros-distribution-name rosdistro))
+	 (release (ros-repository-release
+		   (ros-distribution->package-repo
+		    rosdistro package-name)))
+	 (package-manifest (rosdistro-release->package-manifest release package-name)))
+   `(package
+      (name ,(ros-name->guix-name package-name (ros-distribution-name rosdistro)))
+      (version ,(repo-release-version release))
+      (source ,(rosdistro-release->origin release package-name))
+      (build-system ,(ros-distribution->build-system rosdistro))
+
+      ,@(maybe-native-inputs
+	 (map (lambda (pkg-name)
+		(ros-name->guix-name pkg-name distro-name))
+	      (package-manifest->build-deps package-manifest)))
+      ,@(maybe-propagated-inputs
+	 (map (lambda (pkg-name)
+		(ros-name->guix-name pkg-name distro-name))
+	      (package-manifest->runtime-deps)))
+
+      ;; FIXME: what keys are these in package.xml?
+      (home-page ,(package-manifest-homepage package-manifest))
+      (synopsis #f)
+      (description #f)
+      (license #f))))
 
 (format #t "~y~%"
 	(rosdistro-distribution-repositories
