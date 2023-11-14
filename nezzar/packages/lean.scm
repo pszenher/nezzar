@@ -41,21 +41,34 @@
     (arguments
      (list
       #:build-type "Release"
-      #:make-flags #~(list (string-append
-			    "LEAN_CC=" #$(file-append (assoc-ref inputs "gcc") "/bin/gcc" )))
+      #:configure-flags
+      #~(list
+	 (string-append
+	  "-D" "LEANC_CC=" #$(file-append (this-package-input "gcc") "/bin/gcc")))
       #:phases
       '(modify-phases %standard-phases
-	 ;; FIXME:  somehow LEAN_CC is getting set to just "cc", breaking tests 1584, 1722
-	 ;;         - 1584:leancomptest_foreign - actual cc issue... set LEAN_CC?
-	 ;;         - 1722:leanlaketest_reverse-ffi  jk, src/lake/examples/reverse-ffi/Makefile hardcodes "cc"..., patch?
-	 ;; FIXME:  "git" command is hardcoded in tests, add git native input?
-	 ;;         - 1727:leanlaketest_clone   - src/lake/tests/clone
-	 ;;         - 1728:leanlaketest_depTree - src/lake/tests/depTree
 	 (add-after 'patch-source-shebangs 'patch-bash-paths
+	   ;; heavy usage of /usr/bin/env bash in templated files,
+	   ;; replace with absolute path to bash-minimal...
 	   (lambda* (#:key inputs #:allow-other-keys)
 	     (let ((bash (string-append (assoc-ref inputs "bash-minimal") "/bin/bash")))
 	       (substitute* (find-files "." "\\.in$")
-		 (("(= )/usr/bin/env bash" _ prefix) (string-append prefix bash)))))))))
+		 (("(= )/usr/bin/env bash" _ prefix) (string-append prefix bash))))))
+	 (add-after 'patch-source-shebangs 'patch-test-1722-cc
+	   ;; test 1722 hard-codes "cc" relative binary, replace with
+	   ;; absolute path gcc...
+	   (lambda* (#:key inputs #:allow-other-keys)
+	     (let ((gcc (string-append (assoc-ref inputs "gcc") "/bin/gcc")))
+	       (substitute* "src/lake/examples/reverse-ffi/Makefile"
+		 (("^(\t)cc" _ prefix) (string-append prefix gcc))))))
+	 (add-before 'check 'allow-parallel-tests
+	   ;; Test job count doesn't respect -j flag passed to make
+	   ;; directly, needs to be placed in ARGS env-var/argument...
+	   (lambda* (#:key (tests? #t) (parallel-tests? #t) #:allow-other-keys)
+	     (when (and tests? parallel-tests?)
+	       (setenv "ARGS" (string-append 
+			       "-j" (number->string
+				     (parallel-job-count))))))))))
     (synopsis "Lean 4 programming language and theorem prover")
     (description "Lean is a functional programming language that makes
 it easy to write correct and maintainable code. You can also use Lean
