@@ -6,6 +6,7 @@
   #:use-module (guix utils)
 
   #:use-module (guix build-system cmake)
+  #:use-module (guix build-system emacs)
 
   #:use-module (gnu packages base)
 
@@ -14,6 +15,7 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages python)
 
+  #:use-module (gnu packages emacs-xyz)
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages version-control))
 
@@ -78,4 +80,40 @@ problem domain and manipulating its data, rather than the details of
 programming.")
     (license license:asl2.0)))
 
-lean4
+(define-public emacs-lean4-mode
+  (let ((version "0")
+	(revision "0")
+	(commit "d1c936409ade7d93e67107243cbc0aa55cda7fd5"))
+    (package
+      (name "emacs-lean4-mode")
+      (version (git-version version revision commit))
+      (source
+       (origin
+	 (method git-fetch)
+	 (uri (git-reference
+	       (url "https://github.com/leanprover/lean4-mode.git")
+	       (commit commit)))
+	 (file-name (git-file-name name version))
+	 (sha256
+	  (base32
+	   "1r2574fhay5sdy9biqhy908xk9ld1sfp6i9ax89c4z5qmnqmhgml"))))
+      (build-system emacs-build-system)
+      (arguments
+       `(#:include (cons "^data/" %default-include)))
+      (inputs
+       (list lean4))
+      (propagated-inputs
+       (list emacs-f
+	     emacs-s
+	     emacs-flycheck
+	     emacs-dash
+	     emacs-magit
+	     emacs-lsp-mode))
+      (home-page "https://github.com/leanprover/lean4-mode")
+      (synopsis "Emacs major mode for Lean 4")
+      (description "Emacs major mode for Lean 4 programming language and theorem prover.")
+      (license license:asl2.0))))
+
+(list
+ lean4
+ emacs-lean4-mode)
