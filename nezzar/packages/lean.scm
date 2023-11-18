@@ -50,8 +50,9 @@
       #:phases
       '(modify-phases %standard-phases
 	 (add-after 'patch-source-shebangs 'patch-bash-paths
-	   ;; heavy usage of /usr/bin/env bash in templated files,
-	   ;; replace with absolute path to bash-minimal...
+	   ;; heavy usage of "/usr/bin/env bash" as command in
+	   ;; templated files, replace with absolute path to
+	   ;; bash-minimal...
 	   (lambda* (#:key inputs #:allow-other-keys)
 	     (let ((bash (string-append (assoc-ref inputs "bash-minimal") "/bin/bash")))
 	       (substitute* (find-files "." "\\.in$")
