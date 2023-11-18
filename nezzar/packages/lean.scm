@@ -114,7 +114,3 @@ programming.")
       (synopsis "Emacs major mode for Lean 4")
       (description "Emacs major mode for Lean 4 programming language and theorem prover.")
       (license license:asl2.0))))
-
-(list
- lean4
- emacs-lean4-mode)
