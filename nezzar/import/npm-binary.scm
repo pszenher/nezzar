@@ -32,6 +32,7 @@
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-41)
+  #:use-module (srfi srfi-71)
   #:use-module (web client)
   #:use-module (web response)
   #:use-module (web uri)
@@ -58,10 +59,30 @@
   (name  versioned-package-name)       ;string
   (version versioned-package-version)) ;string
 
+(define (name+version->versioned-package name version)
+  (let* ((version-prefix version-rest (split-at (string-split version #\:) 1))
+	 (name+version-real (apply string-append version-rest)))
+    (case (string->symbol (car version-prefix))
+      ((npm)
+       (format (current-error-port) "guix import: package alias encountered (~a@~a), remapping...~%" name version)
+       (match (string-split name+version-real #\@)
+	 (("" @name vers . ()) (make-versioned-package (string-append "@" @name) vers))
+	 ((name vers . ())     (make-versioned-package name vers))
+	 ((name vers-split)    (make-versioned-package name (apply string-append vers-split)))))
+      ((git)  (begin (format #f "FIXME: 'git:' prefix encountered (~a@~a), ignoring!~%" name version)
+		     '()))
+      ((file) (begin (format #f "FIXME: 'file:' prefix encountered (~a@~a), ignoring~%" name version)
+		     '()))
+      (else
+       (begin
+	 ;; (display ".")
+	 (format (current-error-port) "    dep: ~a@~a~%" name version)
+	 (make-versioned-package name version))))))
+
 (define (dependencies->versioned-packages entries)
   (match entries
     (((names . versions) ...)
-     (map make-versioned-package names versions))
+     (map name+version->versioned-package names versions))
     (_ '())))
 
 (define (extract-license license-string)
@@ -103,7 +124,13 @@
 (define (versions->package-revisions versions)
   (match versions
     (((version . package-spec) ...)
-     (map json->package-revision package-spec))
+     (begin
+       (map (compose json->package-revision
+		     (lambda (v ps)
+		       (begin
+			 (format (current-error-port) "  version: ~a~%" v)
+			 ps)))
+	    version package-spec)))
     (_ '())))
 
 (define (versions->package-versions versions)
@@ -124,8 +151,9 @@
 (define *default-page* "https://www.npmjs.com/package")
 
 (define (lookup-meta-package name)
-  (let ((json (json-fetch (string-append *registry* "/" (uri-encode name)))))
-    (and=> json json->meta-package)))
+  (let ((registry/pkg (string-append *registry* "/" (uri-encode name))))
+    (and=> (json-fetch registry/pkg)
+	   json->meta-package)))
 
 (define lookup-meta-package* (memoize lookup-meta-package))
 
@@ -144,9 +172,12 @@
 (define* (meta-package-package meta #:optional
                                (version (meta-package-latest meta)))
   (match version
-    ((? semver?) (find (lambda (revision)
-                         (semver=? version (package-revision-version revision)))
-                       (meta-package-revisions meta)))
+    ((? semver?) (begin
+		   (if (not (meta-package-revisions meta))
+		       (error "wat.")
+		       (find (lambda (revision)
+			       (semver=? version (package-revision-version revision)))
+			     (meta-package-revisions meta)))))
     ((? string?) (meta-package-package meta (string->semver version)))
     (_ #f)))
 
@@ -154,12 +185,18 @@
   (find (cut semver-range-contains? svr <>)
         (sort svs semver>?)))
 
-(define* (resolve-package name #:optional (svr *semver-range-any*))
-  (let ((meta (lookup-meta-package* name)))
-    (and meta
-         (let* ((version (semver-latest (or (meta-package-versions meta) '()) svr))
-                (pkg (meta-package-package meta version)))
-           pkg))))
+(define* (resolve-package name #:optional (semver-range *semver-range-any*))
+  (begin
+    (format (current-error-port) "guix import: NET: lookup npm pkg: ~a~%" name)
+    (let ((meta (lookup-meta-package* name)))
+      (if meta
+          (let* ((version (semver-latest (or (meta-package-versions meta) '())
+					 semver-range)))
+	    (format (current-error-port) "guix import: found npm pkg: ~a@~a~%" name version)
+	    (meta-package-package meta version))
+	  (begin
+	    (format (current-error-port) "guix import: failed to resolve pkg: ~a~%" name)
+	    (error "ERROR: package resolution failure."))))))
 
 
 ;;;
@@ -184,17 +221,25 @@
   (string->symbol (string-append name "-" version)))
 
 (define (package-revision->symbol package)
-  (let* ((npm-name (package-revision-name package))
-         (version (semver->string (package-revision-version package)))
-         (name (npm-name->name npm-name)))
-    (name+version->symbol name version)))
+;; ((npm-name (package-revision-name package))
+  ;;  (version (semver->string (package-revision-version package)))
+  ;;  (name (npm-name->name npm-name)))
+  (match package
+    (($ <package-revision> name version ...)
+     (name+version->symbol (npm-name->name name) (semver->string version)))
+    (_
+     (error (format #f "Cannot create symbol for non-package-revision object: ~s" package)))))
 
 (define (package-revision->input package)
   "Return the `inputs' entry for PACKAGE."
   (let* ((npm-name (package-revision-name package))
          (name (npm-name->name npm-name)))
-    `(,name
-      (,'unquote ,(package-revision->symbol package)))))
+    (begin
+      (format (current-error-port)
+	      "guix import: creating input { ~a : npm } --> { ~a : guix }~%"
+	      npm-name name)
+      `(,name
+	(,'unquote ,(package-revision->symbol package))))))
 
 (define (npm-package->package-sexp npm-package)
   "Return the `package' s-expression for an NPM-PACKAGE."
@@ -209,18 +254,53 @@
                            home-page
                            (string-append *default-page* "/" (uri-encode name))))
             (synopsis description)
-            (resolved-deps (map (match-lambda (($ <versioned-package> name version)
-                                               (resolve-package name (string->semver-range version)))) (append dependencies peer-dependencies)))
+            (resolved-deps
+	     (map (match-lambda
+		    (($ <versioned-package> name version)
+		     (if (any identity
+			      (map (cut string-prefix? <> version)
+				   '("npm:" "file:" "git:")))
+			 (begin
+			   (format (current-error-port)
+				   "guix import: package ~a has non-normal dep: ~a - Not implemented." name version)
+			   (error))
+			 (begin
+			   (format (current-error-port) "guix import: resolving dep ~a@~a...~%" name version)
+			   (resolve-package name (string->semver-range version)))))
+		    (other (error (format #f "ERROR: non-package encountered in dependency list: ~a~%" other))))
+		  (append dependencies peer-dependencies)))
+	    ;; (resolved-dev-deps
+	    ;;  (map (match-lambda
+	    ;; 	    (($ <versioned-package> name version)
+	    ;; 	     (case (string->symbol
+	    ;; 		    (first (string-split version #\:)))
+	    ;; 	       ((npm)  (error "npm: encount"))
+	    ;; 	       ((git)  (error "git: encount"))
+	    ;; 	       ((file) (error "file: encount"))
+	    ;; 	       (else
+	    ;; 		;; (begin
+	    ;; 		;;   (format (current-error-port)
+	    ;; 		;; 	  "guix import: package ~a has non-normal dev dep: ~a - Not implemented.~%" name version)
+	    ;; 		;;   (error))
+			
+	    ;; 		(begin
+	    ;; 		  (format (current-error-port) "guix import: resolving dev dep ~a@~a...~%" name version)
+	    ;; 		  (resolve-package name (string->semver-range version))))))
+	    ;; 	    (other (error (format #f "ERROR: non-package encountered in dev dependency list: ~a~%" other))))
+	    ;; 	  (append dev-dependencies)))
             (peer-names (map versioned-package-name peer-dependencies))
             ;; lset-difference for treating peer-dependencies as dependencies, which leads to dependency cycles.
             ;; lset-union for treating them as (ignored) dev-dependencies, which leads to broken packages.
             (dev-names (lset-union string= (map versioned-package-name dev-dependencies) peer-names))
+	    ;; FIXME: temporarily disable dev dependency removal
+	    ;; (extra-phases '())
             (extra-phases (match dev-names
                             (() '())
                             ((dev-names ...)
                              `((add-after 'patch-dependencies 'delete-dev-dependencies
-                                 (lambda _
-                                   (delete-dependencies '(,@(reverse dev-names))))))))))
+					  (lambda _
+					    (delete-dependencies '(,@(reverse dev-names)))))))))
+	    )
        (values
         `(package
            (name ,name)
@@ -240,6 +320,11 @@
                ((dependencies ...)
                 `((inputs
                    (,'quasiquote ,(map package-revision->input resolved-deps))))))
+	   ;; ,@(match dev-dependencies
+           ;;     (() '())
+           ;;     ((dev-dependencies ...)
+           ;;      `((native-inputs
+           ;;         (,'quasiquote ,(map package-revision->input resolved-dev-deps))))))
            (home-page ,home-page)
            (synopsis ,synopsis)
            (description ,description)

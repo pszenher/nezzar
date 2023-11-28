@@ -52,6 +52,7 @@ Run SUBCOMMAND with ARGS.\n"))
      (if (member subcommand (subcommands))
 	 (begin (format (current-error-port) "~a :: ~a~%" subcommand args)
 		(newline)
+		(add-to-load-path (string-append (getenv "GUIX_EXTENSIONS_PATH") "/../.."))
 		(load (string-append subcommand ".scm"))
 		(apply (module-ref (resolve-interface `(guix extensions ,(string->symbol subcommand)))
 				   (string->symbol (string-append "nezzar-" subcommand))) args))
@@ -83,10 +84,20 @@ Run SUBCOMMAND with ARGS.\n"))
 	 ))))
 
 ;;; ================================================================
-;;; = TODO
+;;; = NOTES
 ;;; ================================================================
 ;;;
-;;; - Working shell command for extension invocation:
+;;; - Working shell command for extension invocation [2023-11-27]:
+;;; 
 ;;;   -   GUILE_LOAD_PATH=${HOME}/nezzar:${GUILE_LOAD_PATH}   \ # (for loading subcommand modules)
 ;;;       GUIX_EXTENSIONS_PATH=${HOME}/nezzar/guix/extensions \ # (for guix/ui.scm)
 ;;;       guix nezzar import-npm-binary "typescript"  # (actual command invocation)
+;;; 
+;;; - Newly working shell command [2023-11-28]:
+;;; 
+;;;   - GUIX_EXTENSIONS_PATH=~/src/nezzar/guix/extensions \
+;;;     guix nezzar import-npm-binary "typescript" "5"
+;;; 
+;;;   - no longer need guile_load_path, hack the extensions directory
+;;;     handle into nezzar.scm using GUIX_EXTENSIONS_DIR env var,
+;;;     which will always be set when that file is run (hopefully...)

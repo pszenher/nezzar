@@ -18,7 +18,7 @@
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
-(define-module (guix extensions import-npm-binary)
+(define-module (nezzar scripts import-npm-binary)
   #:use-module (guix ui)
   #:use-module (guix utils)
   #:use-module (guix scripts)
@@ -28,7 +28,7 @@
   #:use-module (guix import utils)
   #:use-module (guix read-print)
 
-  #:use-module (guix extensions npm-binary)
+  #:use-module (nezzar import npm-binary)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-37)
@@ -46,7 +46,7 @@
   '())
 
 (define (show-help)
-  (display (G_ "Usage: guix import npm-binary PACKAGE-NAME [VERSION]
+  (display (G_ "Usage: nezzar import npm-binary PACKAGE-NAME [VERSION]
 Import and convert the NPM package PACKAGE-NAME using the
 `npm-build-system' (but without building the package from source)."))
   (display (G_ "
@@ -66,7 +66,7 @@ Import and convert the NPM package PACKAGE-NAME using the
                    (exit 0)))
          (option '(#\V "version") #f #f
                  (lambda args
-                   (show-version-and-exit "guix import npm-binary")))
+                   (show-version-and-exit "nezzar import npm-binary")))
          (option '(#\r "recursive") #f #f
                  (lambda (opt name arg result)
                    (alist-cons 'recursive #t result)))
