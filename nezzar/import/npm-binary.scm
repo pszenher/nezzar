@@ -17,7 +17,7 @@
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
-(define-module (guix extensions npm-binary)
+(define-module (nezzar import npm-binary)
   #:use-module (guix import json)
   #:use-module (guix import utils)
   #:use-module (guix memoization)
