@@ -28,14 +28,15 @@
   #:use-module (guix import utils)
   #:use-module (guix read-print)
 
-  #:use-module (guix extensions npm-binary)
+  #:use-module (nezzar import npm-binary)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-37)
   #:use-module (srfi srfi-41)
   #:use-module (ice-9 match)
   #:use-module (ice-9 format)
-  #:export (guix-import-npm-binary))
+  #:export (guix-import-npm-binary
+	    nezzar-import-npm-binary))
 
 
 ;;;
@@ -118,3 +119,5 @@ Import and convert the NPM package PACKAGE-NAME using the
          (leave (G_ "too few arguments~%")))
         ((many ...)
          (leave (G_ "too many arguments~%")))))))
+
+(define nezzar-import-npm-binary guix-import-npm-binary)
