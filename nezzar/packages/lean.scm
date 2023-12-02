@@ -1,5 +1,6 @@
 (define-module (nezzar packages lean)
   #:use-module (guix packages)
+  #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix gexp)
@@ -42,6 +43,11 @@
     (aesop
      "6749fa4e776919514dae85bfc0ad62a511bc42a7" .
      "1h0i88ddcg1ylgrbvg3qd5fssi4392gb6jidb0vn391b9f0b7j4h")))
+
+(define (%lean-git-url->guix-name url)
+  (assoc-ref
+   '(("https://github.com/leanprover/std4" . "lean4-std4"))
+   url))
 
 (define-public lean4
   (package
@@ -91,6 +97,21 @@
 				  (let ((gcc (string-append (assoc-ref inputs "gcc") "/bin/gcc")))
 				    (substitute* "src/lake/examples/reverse-ffi/Makefile"
 						 (("^(\t)cc" _ prefix) (string-append prefix gcc))))))
+		     (add-after 'patch-source-shebangs 'disable-lakefile-olean-autogen
+				;; PR lean4#2480 added the cursed
+				;; feature of forced generation of a
+				;; local olean cache of every lakefile
+				;; encountered upon load, breaking
+				;; editors, builds, etc. in the
+				;; presence of a read-only filesystem... disable it
+				;; 
+				;; TODO: how many tests does this break...
+				;; 
+				(lambda* (#:key inputs #:allow-other-keys)
+				  (begin
+				    (substitute* "src/lake/Lake/Load/Elab.lean"
+						 (("^( *)(Lean.writeModule env olean)" _ whitespace body)
+						  (string-append whitespace "-- :CURSED: " body))))))
 		     (add-before 'check 'allow-parallel-tests
 				 ;; Test job count doesn't respect -j flag passed to make
 				 ;; directly, needs to be placed in ARGS env-var/argument...
@@ -168,8 +189,8 @@ programming.")
 	  (replace 'install
 	    (lambda* (#:key outputs #:allow-other-keys)
 	      (copy-recursively
-	       "build" (string-append
-			(assoc-ref outputs "out") "/share/lean4")
+	       "." (string-append
+		    (assoc-ref outputs "out") "/share/lean4/std")
 	       #:keep-mtime? #t))))))
      (inputs (list lean4))
      (home-page "https://github.com/leanprover/std4")
@@ -197,8 +218,19 @@ Lean 4.")
        (file-name (git-file-name name version))
        (sha256
 	(base32 hash))))
-     (build-system copy-build-system)
-     (arguments '(#:install-plan '(("." "share/lean4/quote4"))))
+     (build-system gnu-build-system)
+     (arguments
+      `(#:test-target "examples"
+	#:phases
+	(modify-phases %standard-phases
+          (delete 'configure)
+	  (replace 'install
+	    (lambda* (#:key outputs #:allow-other-keys)
+	      (copy-recursively
+	       "." (string-append
+		    (assoc-ref outputs "out") "/share/lean4/Qq")
+	       #:keep-mtime? #t))))))
+     (native-inputs (list lean4))
      (home-page "https://github.com/leanprover-community/quote4")
      (synopsis "Intuitive, type-safe expression quotations for Lean 4.")
      (description "Quote4 implements type-safe expression quotations, 
@@ -221,13 +253,47 @@ metaprogramming facilities.")
      (file-name (git-file-name name version))
      (sha256
       (base32 "0wkmi7pcplfbmb20831yw7s5asqf7ggc6gvcxljzkm7fdkl2dasz"))))
-   (build-system copy-build-system)
-   (arguments '(#:install-plan '(("." "share/lean4/cli"))))
+   ;; (build-system copy-build-system)
+   ;; (arguments '(#:install-plan '(("." "share/lean4/Cli"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:phases
+      (modify-phases
+       %standard-phases
+       (delete 'configure)
+       (replace 'build (lambda _ (invoke "lake" "build" "--verbose")))
+       (delete 'check)
+       (replace 'install
+		(lambda* (#:key outputs #:allow-other-keys)
+		  (copy-recursively
+		   "."
+		   (string-append (assoc-ref outputs "out") "/share/lean4/Cli")
+		   #:keep-mtime? #t))))))
+   (native-inputs (list lean4))
    (home-page "https://github.com/leanprover/lean4-cli")
    (synopsis "Command-Line Interface library for Lean 4")
    (description "A Lean 4 library for configuring Command Line Interfaces and parsing
 command line arguments.")
    (license license:expat)))
+
+(define lean4-proofwidgets4-js
+  (package
+   (name "lean4-proofwidgets4-js")
+   (version "0.0.21")
+   (source
+    (origin
+     (method url-fetch/tarbomb)
+     (uri
+      (string-append "https://github.com/leanprover-community/ProofWidgets4"
+		     "/releases/download/" "v" version "/linux-64.tar.gz"))
+     (sha256
+      (base32 "15i6gqv7w89s77887xib8dnmmzf366fzbfl5mb9ya5r65g38kqcs"))))
+   (build-system copy-build-system)
+   (arguments '(#:install-plan '(("./js" "js"))))
+   (home-page "https://github.com/leanprover-community/ProofWidgets4")
+   (synopsis "Pre-compiled *.js components of ProofWidgets4")
+   (description "")
+   (license license:asl2.0)))
 
 (define-public lean4-proofwidgets4
   (package
@@ -242,26 +308,53 @@ command line arguments.")
      (file-name (git-file-name name version))
      (sha256
       (base32 "17p0sy495wpc3kqcnvngz25avbpxglhinwpgbsf68x2g2kqy8h27"))))
-   ;; (build-system copy-build-system)
-   ;; (arguments '(#:install-plan '(("." "share/lean4/proofwidgets4"))))
    (build-system gnu-build-system)
    (arguments
-    `(#:phases (modify-phases %standard-phases
-	           (delete 'configure)
-		   (add-before 'build 'purge-lakefile-requires
-		       (lambda _
-			 (substitute* "lakefile.lean"
-			   (("^require [a-Z]* from git .*$") ""))))
-		   (replace 'build (lambda _ (invoke "lake" "build")))
-		   (delete 'check)
-		   (replace 'install
-			    (lambda* (#:key outputs #:allow-other-keys)
-			      (copy-recursively
-			       "build" (string-append
-					(assoc-ref outputs "out") "/share/lean4")
-			       #:keep-mtime? #t))))))
+    `(#:phases
+      (modify-phases
+       %standard-phases
+       (delete 'configure)
+       (add-before 'build 'patch-lakefile-requires
+		   (lambda* (#:key inputs #:allow-other-keys)
+		     (define (quote-wrap . str) (string-append "\"" (string-join str "/") "\""))
+		     (begin
+		       (use-modules (srfi srfi-1))
+		       (substitute* "lakefile.lean"
+				    (("^require ([a-Z]*) from git \"(.*)\" @ \"[a-Z]*\".*$" _ pkg url)
+				     (string-append
+				      "require " pkg " from"
+				      (quote-wrap
+				       (assoc-ref inputs (string-append
+							  "lean4-" (last (string-split url #\/))))
+				       "share/lean4" pkg)
+				      "\n")
+				     ))
+		       (delete-file "lake-manifest.json"))))
+       (add-before 'build 'disable-cloud-release
+		   (lambda _ (substitute*
+			      "lakefile.lean"
+			      (("^( *preferReleaseBuild := )true" _ prefix)
+			       (string-append prefix "false")))))
+       (add-before 'build 'inject-precompiled-js
+		   (lambda* (#:key inputs #:allow-other-keys)
+		     (copy-recursively
+		      (string-append (assoc-ref inputs "lean4-proofwidgets4-js") "/js")
+		      "build/js")))
+       (replace 'build
+		(lambda* (#:key inputs outputs #:allow-other-keys)
+		  (begin
+		    (invoke "lake" "update" "--no-build" "--verbose")
+		    (invoke "lake" "build" "--verbose" "-KpreferReleaseBuild=false"))))
+       (delete 'check)
+       
+       (replace 'install
+		(lambda* (#:key outputs #:allow-other-keys)
+		  (copy-recursively
+		   "."
+		   (string-append (assoc-ref outputs "out") "/share/lean4/proofwidgets")
+		   #:keep-mtime? #t))))))
    (inputs (list lean4 lean4-std4))
-   (native-inputs (list node))
+   (native-inputs (list lean4-proofwidgets4-js))
    (home-page "https://github.com/leanprover-community/ProofWidgets4")
    (synopsis "Helper toolkit for creating your own Lean 4 UserWidgets")
    (description "ProofWidgets is a library of user interface components
@@ -285,8 +378,43 @@ proofs.")
      (file-name (git-file-name name version))
      (sha256
       (base32 "17hq7953zfbngkqw84g795hm2309y0vbcvk1scr493lz92dpks24"))))
-   (build-system copy-build-system)
-   (arguments '(#:install-plan '(("." "share/lean4/aesop"))))
+   ;; (build-system copy-build-system)
+   ;; (arguments '(#:install-plan '(("." "share/lean4/aesop"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:phases
+      (modify-phases
+       %standard-phases
+       (delete 'configure)
+       (add-before 'build 'patch-lakefile-requires
+		   (lambda* (#:key inputs #:allow-other-keys)
+		     (define (quote-wrap . str) (string-append "\"" (string-join str "/") "\""))
+		     (begin
+		       (use-modules (srfi srfi-1))
+		       (substitute* "lakefile.lean"
+				    (("^require ([a-Z]*) from git \"(.*)\" @ \"[a-Z0-9._-]*\".*$" _ pkg url)
+				     (string-append
+				      "require " pkg " from"
+				      (quote-wrap
+				       (assoc-ref inputs (string-append
+							  "lean4-" (last (string-split url #\/))))
+				       "share/lean4" pkg)
+				      "\n")
+				     ))
+		       (delete-file "lake-manifest.json"))))
+       (replace 'build
+		(lambda* (#:key inputs outputs #:allow-other-keys)
+		  (begin
+		    (invoke "lake" "update" "--no-build" "--verbose")
+		    (invoke "lake" "build" "--verbose"))))
+       (delete 'check)
+       (replace 'install
+		(lambda* (#:key outputs #:allow-other-keys)
+		  (copy-recursively
+		   "."
+		   (string-append (assoc-ref outputs "out") "/share/lean4/aesop")
+		   #:keep-mtime? #t))))))
+   (inputs (list lean4 lean4-std4))
    (home-page "https://github.com/leanprover-community/aesop")
    (synopsis "White-box automation for Lean 4")
    (description "Aesop (Automated Extensible Search for Obvious Proofs) is a proof
@@ -314,42 +442,39 @@ search tactic for Lean 4. It is broadly similar to Isabelle's @code{auto}.")
 	  lean4-quote4
 	  lean4-cli
 	  lean4-proofwidgets4
-	  lean4-aesop))
+	  lean4-aesop
+
+	  python))
    (arguments
-    `(#:phases
+    `(#:test-target "test"
+      #:phases
       (modify-phases
        %standard-phases
        (delete 'configure)
-       (add-after 'unpack 'patch-lake-dependencies
+       (add-before 'build 'patch-lake-dependencies
 		  (lambda* (#:key inputs #:allow-other-keys)
 		    (define (quote-wrap . str) (string-append "\"" (string-join str "/") "\""))
 		    (begin
 		      (delete-file "lake-manifest.json")
 		      (mkdir "lake-packages")
-		      (for-each (lambda (l) (copy-recursively (cadr l) (string-append "./lake-packages/" (car l))))
-				`(("std"          ,(string-append (assoc-ref inputs "lean4-std4")   "/share/lean4/std4"))
-				  ("Qq"        ,(string-append (assoc-ref inputs "lean4-quote4") "/share/lean4/quote4"))
-				  ("aesop"         ,(string-append (assoc-ref inputs "lean4-aesop")  "/share/lean4/aesop"))
-				  ("Cli"           ,(string-append (assoc-ref inputs "lean4-cli")    "/share/lean4/cli"))
-				  ("proofwidgets" ,(string-append (assoc-ref inputs "lean4-proofwidgets4") "/share/lean4/proofwidgets4"))))
-		      (substitute* "lakefile.lean"
-				   (("^require ([a-Z]*) from git .*$" _ package)
-				    (string-join
-				     (list "require" package "from"
-					   (quote-wrap
-					    (string-append
-					     "./lake-packages/" package)) "\n")))
-				   ;; (("^(require Qq from )git .*$" _ prefix)
-				   ;;  (string-append prefix (quote-wrap (assoc-ref inputs "lean4-quote4") "share/lean4/quote4") "\n"))
-				   ;; (("^(require aesop from )git .*$" _ prefix)
-				   ;;  (string-append prefix (quote-wrap (assoc-ref inputs "lean4-aesop") "share/lean4/aesop") "\n"))
-				   ;; (("^(require Cli from )git .*$" _ prefix)
-				   ;;  (string-append prefix (quote-wrap (assoc-ref inputs "lean4-cli") "share/lean4/cli") "\n"))
-				   ;; (("^(require proofwidgets from )git .*$" _ prefix)
-				   ;;  (string-append prefix (quote-wrap (assoc-ref inputs "lean4-proofwidgets4") "share/lean4/proofwidgets4") "\n"))
-				   )
-		      (invoke "cat" "lakefile.lean")
-		      (invoke "lake" "update")))))))
+		      (let ((dep-alist
+			     `(("std"          . ,(string-append (assoc-ref inputs "lean4-std4"  ) "/share/lean4/std"))
+			       ("Qq"           . ,(string-append (assoc-ref inputs "lean4-quote4") "/share/lean4/Qq"))
+			       ("aesop"        . ,(string-append (assoc-ref inputs "lean4-aesop" ) "/share/lean4/aesop"))
+			       ("Cli"          . ,(string-append (assoc-ref inputs "lean4-cli"   ) "/share/lean4/Cli"))
+			       ("proofwidgets" . ,(string-append (assoc-ref inputs "lean4-proofwidgets4") "/share/lean4/proofwidgets")))))
+			(substitute* "lakefile.lean"
+				     (("^require ([a-Z]*) from git .*$" _ package)
+				      (string-join
+				       (list "require" package "from" (quote-wrap (assoc-ref dep-alist package)) "\n"))))))))
+       (add-after 'patch-lake-dependencies 'lake-update
+		  (lambda _ (invoke "lake" "update" "--no-build" "--verbose")))
+       (replace 'install
+		(lambda* (#:key outputs #:allow-other-keys)
+		  (copy-recursively
+		   "."
+		   (string-append (assoc-ref outputs "out") "/share/lean4/math")
+		   #:keep-mtime? #t))))))
    (home-page "https://leanprover-community.github.io/")
    (synopsis "The math library of Lean 4")
    (description "Mathlib is a user maintained library for the Lean theorem
@@ -416,4 +541,8 @@ install, select, run, and uninstall Lean versions manually using the
 commands of the elan executable.")
    (license (list license:asl2.0 license:expat))))
 
+;; lean4-mathlib4
+;; lean4
+;; (list lean4-quote4 lean4-cli)
+;; (list lean4 lean4-mathlib4 lean4-std4)
 lean4-mathlib4
