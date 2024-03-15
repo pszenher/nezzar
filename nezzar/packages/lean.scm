@@ -22,7 +22,7 @@
 (define-public lean4
   (package
     (name "lean4")
-    (version "4.2.0")
+    (version "4.6.1")
     (home-page "https://lean-lang.org/")
     (source (origin
 	      (method git-fetch)
@@ -32,7 +32,7 @@
 	      (file-name (git-file-name name version))
 	      (sha256
 	       (base32
-		"144dxqljq6myg85xcyihlb9jqk4p0j4llpc74rgzwc4d50f2v9p7"))))
+		"110fdd0swlwswhzx18knn8jaz7xa7lc0p71cf8vci88j7h08cjn1"))))
     (build-system cmake-build-system)
     (inputs
      (list bash-minimal gmp gcc))
@@ -64,6 +64,15 @@
 	     (let ((gcc (string-append (assoc-ref inputs "gcc") "/bin/gcc")))
 	       (substitute* "src/lake/examples/reverse-ffi/Makefile"
 		 (("^(\t)cc" _ prefix) (string-append prefix gcc))))))
+         (add-after 'patch-source-shebangs 'patch-test-1800-leanlaketest_init
+	   ;; test 1800 attempts to `curl` lean-toolchain file from mathlib master branch...
+           ;; stub out the test (it is only testing the `math` template for `lake init`
+	   (lambda* _
+	     (substitute* "src/lake/tests/init/test.sh"
+	       (("^.LAKE new qed math"         str)            (string-append "###STUB### " str))
+               (("^sed_i .* qed/lakefile.lean" str)            (string-append "###STUB### " str))
+               (("^.LAKE -d qed build Qed"     str)            (string-append "###STUB### " str))
+               (("^test -f qed/.lake/build/lib/Qed.olean" str) (string-append "###STUB### " str)))));
 	 (add-before 'check 'allow-parallel-tests
 	   ;; Test job count doesn't respect -j flag passed to make
 	   ;; directly, needs to be placed in ARGS env-var/argument...
@@ -84,7 +93,7 @@ programming.")
 (define-public emacs-lean4-mode
   (let ((version "0")
 	(revision "0")
-	(commit "d1c936409ade7d93e67107243cbc0aa55cda7fd5"))
+	(commit "f1f24c15134dee3754b82c9d9924866fe6bc6b9f"))
     (package
       (name "emacs-lean4-mode")
       (version (git-version version revision commit))
@@ -97,7 +106,7 @@ programming.")
 	 (file-name (git-file-name name version))
 	 (sha256
 	  (base32
-	   "1r2574fhay5sdy9biqhy908xk9ld1sfp6i9ax89c4z5qmnqmhgml"))))
+	   "0gd7hd22b85z5lhd3qza531fc8cf9dngvlngym5a4d0bd4vljgxr"))))
       (build-system emacs-build-system)
       (arguments
        `(#:include (cons "^data/" %default-include)))
@@ -114,3 +123,5 @@ programming.")
       (synopsis "Emacs major mode for Lean 4")
       (description "Emacs major mode for Lean 4 programming language and theorem prover.")
       (license license:asl2.0))))
+
+emacs-lean4-mode
