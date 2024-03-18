@@ -9,8 +9,10 @@
   #:use-module (guix build-system emacs)
 
   #:use-module (gnu packages base)
+  #:use-module (gnu packages commencement) ; for `gcc-toolchain`
 
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages curl)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages python)
@@ -35,7 +37,9 @@
 		"110fdd0swlwswhzx18knn8jaz7xa7lc0p71cf8vci88j7h08cjn1"))))
     (build-system cmake-build-system)
     (inputs
-     (list bash-minimal gmp gcc))
+     (list bash-minimal gmp gcc
+           ;; for runtime compilation/downloads
+           gcc-toolchain curl))
     (native-inputs
      (list coreutils
 	   ;; for tests:
@@ -123,5 +127,3 @@ programming.")
       (synopsis "Emacs major mode for Lean 4")
       (description "Emacs major mode for Lean 4 programming language and theorem prover.")
       (license license:asl2.0))))
-
-emacs-lean4-mode
