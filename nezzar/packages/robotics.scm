@@ -5,6 +5,8 @@
   #:use-module (gnu packages sdl)
   #:use-module (gnu packages geo)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages cmake)
 
   #:use-module (guix packages)
   #:use-module (guix git-download)
@@ -33,7 +35,7 @@
    (inputs
     (list qtconnectivity
 	  qtcharts
-	  qtlocation
+	  qtlocation-5
 	  qtdeclarative-5
 	  qtmultimedia-5
 	  qtquickcontrols2-5

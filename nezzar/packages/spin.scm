@@ -21,6 +21,7 @@
        (uri (git-reference
 	     (url "https://github.com/nimble-code/Spin.git")
 	     (commit (string-append "version-" version))))
+       (file-name (git-file-name name version))
        (modules '((guix build utils)))
        (snippet '(delete-file-recursively "Bin"))
        (sha256

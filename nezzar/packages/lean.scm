@@ -84,7 +84,7 @@
 	     (when (and tests? parallel-tests?)
 	       (setenv "ARGS" (string-append 
 			       "-j" (number->string
-				     (parallel-job-count))))))))))
+				     (min 8 (parallel-job-count)))))))))))
     (synopsis "Lean 4 programming language and theorem prover")
     (description "Lean is a functional programming language that makes
 it easy to write correct and maintainable code. You can also use Lean
