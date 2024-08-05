@@ -1,4 +1,4 @@
 (channel
  (version 0)
- (directory "nezzar")
+ (directory "base")
  (url "https://github.com/pszenher/nezzar.git"))
