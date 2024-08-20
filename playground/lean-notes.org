@@ -1,0 +1,42 @@
+* Lean4 Test Failures
+
+- Likely due to parallelism, and confirmed to be inconsistent between runs
+  - these occurred with 16-core parallelism on tests
+- Haven't seen any issues since lowering parallel test run count to 8
+
+#+begin_src
+
+;;; ================================================================ 
+;;; LEAN 4.3.0, single test failure
+;;; TODO: is this consistent?
+;;; 
+;; 1626/1760 Test #1631: leaninterptest_phashmap3.lean .............................***Failed    0.29 sec
+;; --- phashmap3.lean.expected.out	1970-01-01 00:00:01.000000000 +0000
+;; +++ phashmap3.lean.produced.out	2024-08-18 01:42:44.552000000 +0000
+;; @@ -1,2 +0,0 @@
+;; -{ nodes := 7, null := 185, collisions := 3, depth := 7}
+;; -{ nodes := 1, null := 31, collisions := 0, depth := 1}
+;; ERROR: file phashmap3.lean.produced.out does not match phashmap3.lean.expected.out
+;;; 
+;;; ================================================================
+
+;;; ================================================================
+;;; lean 4.6.0, single test failure
+;;; TODO: consistent?
+;;;
+;; 1692/1811 Test #1689: leaninterptest_t4.lean ....................................***Failed    0.38 sec
+;; --- t4.lean.expected.out	1970-01-01 00:00:01.000000000 +0000
+;; +++ t4.lean.produced.out	2024-08-18 01:47:48.084000000 +0000
+;; @@ -1,7 +0,0 @@
+;; -(x + (x * (x * (x + x))))
+;; -1 count: 9
+;; -(1 + ((x * ((2 * x) + (x + x))) + (x * (x + x))))
+;; -2 count: 10
+;; -((4 * x) + ((2 * x) + (x + (x + ((2 * x) + (x + x))))))
+;; -3 count: 1
+;; -12
+;; ERROR: file t4.lean.produced.out does not match t4.lean.expected.out
+;;;
+;;; ================================================================
+
+#+end_src
