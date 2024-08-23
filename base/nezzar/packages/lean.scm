@@ -117,6 +117,35 @@ with guix sha256 hash HASH and git commit sha1 GIT-SHA1."
        #:phases
        ,#~(modify-phases %standard-phases
 
+	    ;; FIXME: there has to be a better way to make an abspath
+	    ;;        *.so file available to leanc for linking without
+	    ;;        triggering gcc's yelling...
+	    
+	    ;; (add-after 'unpack 'fix-leanc-gmp-linker-flags
+	    ;;   (lambda* _
+	    ;; 	;; 
+	    ;; 	;; NOTE: replace `libgmp.so' file reference added to
+	    ;; 	;;       `LEAN_EXTRA_LINKER_FLAGS' from cmake with an
+	    ;; 	;;       `-L' flag-prefixed abspath of gmp entire guix
+	    ;; 	;;       package lib directory.  This replaces the
+	    ;; 	;;       non-flag `libgmp.so' abspath in the `leanc'
+	    ;; 	;;       linker args, and is done to prevent every
+	    ;; 	;;       non-linking action taken by `leanc' at
+	    ;; 	;;       runtime from printing gcc's "linking not
+	    ;; 	;;       done" warning.
+	    ;; 	;;
+	    ;; 	(let ((gmp-libdir #$(file-append gmp "/lib")))
+	    ;; 	  (substitute* '("src/CMakeLists.txt"
+	    ;; 			 "stage0/src/CMakeLists.txt")
+	    ;; 	    (("(string\\(APPEND LEAN_EXTRA_LINKER_FLAGS \" )\\$\\{GMP_LIBRARIES\\}(\"\\))" all prefix suffix)
+	    ;; 	     (let ((newstr (string-append prefix "-L" gmp-libdir suffix)))
+	    ;; 	       (format (current-error-port)
+	    ;; 		       "~a: ~30a ==> ~30a~%"
+	    ;; 		       'fix-leanc-gmp-linker-flags
+	    ;; 		       (format #f "'~a'" all)
+	    ;; 		       (format #f "'~a'" newstr))
+	    ;; 	       newstr))))))
+	    
 	    (add-after 'unpack 'override-git-sha1-hash
 	      ;; Manually override the `GIT_SHA1' CMake variable in
 	      ;; src/CMakeLists.txt so that `Lean.githash' has the
@@ -223,7 +252,7 @@ problem domain and manipulating its data, rather than the details of
 programming.")
     (license license:asl2.0)))
 
-(define (make-lean4* version)
+(define* (make-lean4* version #:key check-git-hash?)
   "Return a <package> object corresponding to Lean4 version VERSION,
 where VERSION is a semver string expected to be found in the
 `%lean4-versions' alist.
@@ -240,6 +269,7 @@ git hash associated with tag (string-append \"v\" VERSION)."
 	      %lean4-git-url
 	      #:ref `(tag . ,(string-append "v" version))
 	      #:check-out? #f)))
+      (format (current-error-port) "got lean commit `~a'~%" git-sha1)
       git-sha1))
   
   (match (assoc version %lean4-versions)
@@ -252,12 +282,13 @@ git hash associated with tag (string-append \"v\" VERSION)."
 	     "WARN: Known lean4 version+hash for `~a', but no git sha1 hash set, fetching repo... ~!"
 	     version)
      (let ((git-sha1 (fetch-commit-hash)))
-       (format (current-error-port) "got `~a'~%" git-sha1)
        (make-lean4 version hash git-sha1)))
     ((_ (? string? hash) (? string? git-sha1))
-     (if (string=? git-sha1 (fetch-commit-hash))
+     (if (or (not check-git-hash?)
+	     (string=? git-sha1 (fetch-commit-hash)))
 	 (make-lean4 version hash git-sha1)
-	 (error "Lean4 git sha1 hash mismatch:" git-sha1 (fetch-commit-hash))))))
+	 (error "Lean4 git sha1 hash mismatch:"
+		git-sha1 (fetch-commit-hash))))))
 
 
 ;;; ================================================================
@@ -283,3 +314,5 @@ git hash associated with tag (string-append \"v\" VERSION)."
 ;;; NOTE: release-candidate package pointer: update to match latest
 ;;;       when new stable release versions are added
 (define-public lean-4-next lean-4.11)
+
+lean-4

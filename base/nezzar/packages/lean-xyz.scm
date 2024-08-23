@@ -8,6 +8,7 @@
   #:use-module (guix build-system emacs)
   #:use-module (nezzar build-system lake)
 
+  #:use-module (gnu packages gcc)
   #:use-module (gnu packages node)
   #:use-module (gnu packages emacs-xyz)
   #:use-module (nezzar packages lean)
@@ -60,8 +61,6 @@
       (build-system emacs-build-system)
       (arguments
        `(#:include (cons "^data/" %default-include)))
-      (inputs
-       (list lean-4))
       (propagated-inputs
        (list emacs-f
 	     emacs-s
@@ -80,20 +79,18 @@
 ;;; ================================================================
 
 (define-public lean-cli
-  (let ((lake.scope "leanprover")
-	(lake.name  "Cli")
-	(version "2.2.0")
+  (let ((version "2.2.0")
 	(revision "lv4.9.0")
 	(commit "2cf1030dc2ae6b3632c84a09350b675ef3e347d0"))
     (package
-      (name (string-append "lean-" (string-downcase lake.name)))
+      (name "lean-cli")
       (version (git-version version revision commit))
       (home-page "https://github.com/leanprover/lean4-cli")
       (source
        (origin
 	 (method git-fetch)
 	 (uri (git-reference
-	       (url (string-append home-page ".git"))
+	       (url "https://github.com/leanprover/lean4-cli.git")
 	       (commit commit)))
 	 (file-name (git-file-name name version))
 	 (sha256
@@ -108,27 +105,193 @@
       (description #f)
       (license license:expat))))
 
-(define-public lean-qq
-  (let ((lake.scope "leanprover-community")
-	(lake.name  "Qq")
-	(version "0")
+(define-public lean-md4lean
+  (let ((version "0")
 	(revision "0")
-	(commit "01ad33937acd996ee99eb74eefb39845e4e4b9f5"))
+	(commit "5e95f4776be5e048364f325c7e9d619bb56fb005"))
     (package
-      (name (string-append "lean-" (string-downcase lake.name)))
+      (name "lean-md4lean")
       (version (git-version version revision commit))
-      (home-page "https://github.com/leanprover-community/quote4")
+      (home-page "https://reservoir.lean-lang.org/@acmepjz/MD4Lean")
       (source
        (origin
 	 (method git-fetch)
 	 (uri (git-reference
-	       (url (string-append home-page ".git"))
+	       (url "https://github.com/acmepjz/md4lean.git")
+	       (commit commit)))
+	 (file-name (git-file-name name version))
+	 (sha256
+	  (base32 "0f3pf68ffrfr7l4my3raf4vhqwj86vyrfcj6sgkgb5fcwh9aypll"))))
+      (build-system lake-build-system)
+      (arguments
+       (list
+	#:build-targets
+	#~'("MD4Lean:leanArts"
+	    "MD4Lean:static"
+	    "MD4Lean:shared"
+	    "MD4Lean/md4c")
+	 #:phases
+	 #~(modify-phases %standard-phases
+	     (add-before 'build 'set-cc
+	       ;; 
+	       ;; FIXME: we should be able to directly set this var to
+	       ;;        gcc's path by setting the `LEAN_CC' env-var,
+	       ;;        but it doesn't seem to be respected?
+	       ;;
+	       ;;        Would be something like this:
+	       ;;          (setenv "LEAN_CC" #$(file-append gcc-12 "/bin/gcc"))
+	       ;; 
+               (lambda _
+		 ;; 
+		 ;; NOTE: add a tmpdir to path containing a symlink
+		 ;;       from `tmpbin/cc' --> (#$gcc ++ "/bin/gcc"), as
+		 ;;       `getLeanCc' expects to find it via path
+		 ;; 
+		 (let ((tmpbin  (tmpnam))
+                       (curpath (getenv "PATH")))
+		   (mkdir-p tmpbin)
+		   (symlink #$(file-append gcc-12 "/bin/gcc") (string-append tmpbin "/cc"))
+		   (setenv "PATH" (string-append tmpbin ":" curpath))))))))
+      (synopsis "Lean wrapper for the MD4C Markdown parser")
+      (description "A Lean wrapper for the MD4C Markdown parser, to be used in doc-gen4,
+replacing CMark.lean.")
+      (license license:expat))))
+
+(define-public lean-unicode-basic
+  (package
+    (name "lean-unicode-basic")
+    (version "1.0.0")
+    (home-page "https://reservoir.lean-lang.org/@fgdorais/UnicodeBasic")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+	     (url "https://github.com/fgdorais/lean4-unicode-basic.git")
+	     (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+	(base32 "01sfdz7y1vd5f0dx7h51647z1ahp5qdgbn2shf9gqk743qxfwwz7"))))
+    (build-system lake-build-system)
+    (synopsis "Basic Unicode support for Lean 4")
+    (description "Unicode support for Lean 4")
+    (license
+     (list license:asl2.0
+	   license:unicode))))
+
+(define-public lean-bibtex-query
+  (let ((version "0")
+	(revision "0")
+	;; NOTE: this is one commit after the version requested in
+	;;       doc-gen4's `v4.10.0' tag, which adapts to
+	;;       UnicodeBasic's `v1.0.0' release API.
+	(commit "cdaba5f463ac6cd8617802c4feec509a9e79573d"))
+    (package
+      (name "lean-bibtex-query")
+      (version (git-version version revision commit))
+      (home-page "https://reservoir.lean-lang.org/@dupuisf/BibtexQuery")
+      (source
+       (origin
+	 (method git-fetch)
+	 (uri (git-reference
+	       (url "https://github.com/dupuisf/BibtexQuery.git")
+	       (commit commit)))
+	 (file-name (git-file-name name version))
+	 (sha256
+	  (base32 "0fqfzd5lx3jqdrkx75ygd1p9214jyaml23jlh5zcyzyg4vqnk5gw"))))
+      (build-system lake-build-system)
+      (inputs
+       (list `("lean-/UnicodeBasic" ,lean-unicode-basic)))
+      (synopsis "A simple command-line bibtex query utility written in Lean 4")
+      (description "BibtexQuery is a command-line utility that reads in a bibtex file and
+performs simple queries.  BibtexQuery reads in a bibtex file, and
+returns the entries that match all the queries given as command-line
+parameters.")
+      (license license:asl2.0))))
+
+(define-public lean-doc-gen4
+  (package
+    (name "lean-doc-gen4")
+    (version "4.10.0")
+    (home-page
+     "https://reservoir.lean-lang.org/@leanprover/doc-gen4")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+	     (url "https://github.com/leanprover/doc-gen4.git")
+	     (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+	(base32
+	 "1j8nkm4m0mw90gdza8h4nlr7mcwn8ccwl012hvrpv96hnga36f6h"))))
+    (build-system lake-build-system)
+    (inputs
+     `(("lean-/MD4Lean"      ,lean-md4lean)
+       ("lean-/UnicodeBasic" ,lean-unicode-basic)
+       ("lean-/BibtexQuery"  ,lean-bibtex-query)
+       ("lean-/Cli"          ,lean-cli)))
+    (arguments
+     (list
+      #:build-targets
+      #~'("doc-gen4"
+	  "DocGen4:leanArts"
+	  "DocGen4:static"
+	  "DocGen4:shared"
+
+	  ;; Documentation targets
+	  "DocGen4:docs"
+	  "DocGen4:docsHeader"
+
+	  ;; Documentation for dependency packages
+	  "Cli:docs"
+	  "MD4Lean:docs"
+	  "UnicodeBasic:docs"
+	  "BibtexQuery:docs")
+      #:phases
+      #~(modify-phases %standard-phases
+	  (add-before 'build 'disable-core-docs-build
+	    (lambda _
+	      (let ((repstr "let coreJob : BuildJob FilePath := default"))
+		(substitute* "lakefile.lean"
+		  (("let coreJob ← coreDocs.fetch" str)
+		   (format #t "Replacing `~a' ==> `~a'~%" str repstr)
+		   repstr)))))
+	  (add-before 'build 'set-DOCGEN_SRC
+            (lambda _
+	      ;; 
+	      ;; NOTE: cannot use default here ("github"), as it
+	      ;;       expects to be working within a git checkout
+	      ;;       with a readable `.git' directory at its root
+	      ;; 
+	      (setenv "DOCGEN_SRC" "file"))))))
+    (synopsis "Document Generator for Lean 4")
+    (description "Document Generator for Lean 4.")
+    (license license:asl2.0)))
+
+(define-public lean-qq
+  (let ((version "0")
+	(revision "0")
+	(commit "01ad33937acd996ee99eb74eefb39845e4e4b9f5"))
+    (package
+      (name "lean-qq")
+      (version (git-version version revision commit))
+      (home-page "https://reservoir.lean-lang.org/@leanprover-community/Qq")
+      (source
+       (origin
+	 (method git-fetch)
+	 (uri (git-reference
+	       (url "https://github.com/leanprover-community/quote4.git")
 	       (commit commit)))
 	 (file-name (git-file-name name version))
 	 (sha256
 	  (base32
 	   "1iq2kkd91gzigvc7xapmc1sks4wdn4h7f77z1gj5bsxb1qb81n9p"))))
       (build-system lake-build-system)
+      (arguments
+       (list
+	#:build-targets #~'("Qq:leanArts"
+			    "Qq:static"
+			    "Qq:shared")))
       (synopsis "Intuitive, type-safe expression quotations for Lean 4.")
       (description "Qq implements type-safe expression quotations, which are a
 particularly convenient way of constructing object-level
@@ -140,88 +303,80 @@ and speed of Lean 4's metaprogramming facilities.")
 
 
 (define-public lean-batteries
-  (let ((lake.scope "leanprover-community")
-	(lake.name  "batteries"))
-    (package
-      (name (string-append "lean-" lake.name))
-      (version "4.10.0")
-      (home-page
-       (string-append
-	"https://github.com/" lake.scope "/" lake.name))
-      (source
-       (origin
-	 (method git-fetch)
-	 (uri (git-reference
-	       (url (string-append home-page ".git"))
-	       (commit (string-append "v" version))))
-	 (file-name (git-file-name name version))
-	 (sha256
-	  (base32
-	   "0q7wcbx3wl318k8x0hh846bdnh960kiqv9bvs83yzwlnqsvgiiga"))))
-      (build-system lake-build-system)
-      (arguments
-       '(#:build-targets '("Batteries:leanArts"
-			   "Batteries:static"
-			   "Batteries:shared")))
-      (synopsis "The 'batteries included' extended library for the Lean programming language and theorem prover")
-      (description "batteries is a collection of data structures and tactics intended for
+  (package
+    (name "lean-batteries")
+    (version "4.10.0")
+    (home-page
+     "https://reservoir.lean-lang.org/@leanprover-community/batteries")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+	     (url "https://github.com/leanprover-community/batteries.git")
+	     (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+	(base32
+	 "0q7wcbx3wl318k8x0hh846bdnh960kiqv9bvs83yzwlnqsvgiiga"))))
+    (build-system lake-build-system)
+    (arguments
+     '(#:build-targets '("Batteries:leanArts"
+			 "Batteries:static"
+			 "Batteries:shared")))
+    (synopsis "The 'batteries included' extended library for the Lean programming language and theorem prover")
+    (description "batteries is a collection of data structures and tactics intended for
 use by both computer-science applications and mathematics applications
 of Lean 4.")
-      (license license:asl2.0))))
+    (license license:asl2.0)))
 
 (define-public lean-aesop
-  (let ((lake.scope "leanprover-community")
-	(lake.name  "aesop"))
-    (package
-      (name (string-append "lean-" lake.name))
-      (version "4.10.0")
-      (home-page
-       (string-append
-	"https://github.com/" lake.scope "/" lake.name))
-      (source
-       (origin
-	 (method git-fetch)
-	 (uri (git-reference
-	       (url (string-append home-page ".git"))
-	       (commit (string-append "v" version))))
-	 (file-name (git-file-name name version))
-	 (sha256
-	  (base32
-	   "039rdy7lldkvbl8gvln4v912b9pyx0952mqad49g755yvhgq7zw0"))))
-      (build-system lake-build-system)
-      (inputs (list
-	       `("lean-/batteries" ,lean-batteries)))
-      (synopsis "White-box automation for Lean 4")
-      (description "Aesop (Automated Extensible Search for Obvious Proofs) is a proof
+  (package
+    (name "lean-aesop")
+    (version "4.10.0")
+    (home-page
+     "https://reservoir.lean-lang.org/@leanprover-community/aesop")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+	     (url "https://github.com/leanprover-community/aesop.git")
+	     (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+	(base32
+	 "039rdy7lldkvbl8gvln4v912b9pyx0952mqad49g755yvhgq7zw0"))))
+    (build-system lake-build-system)
+    (inputs (list
+	     `("lean-/batteries" ,lean-batteries)))
+    (synopsis "White-box automation for Lean 4")
+    (description "Aesop (Automated Extensible Search for Obvious Proofs) is a proof
 search tactic for Lean 4. It is broadly similar to Isabelle's @code{auto}.")
-      (license license:asl2.0))))
+    (license license:asl2.0)))
 
 (define-public lean-import-graph
-  (let ((lake.scope "leanprover-community")
-	(lake.name  "importGraph"))
-    (package
-      (name "lean-import-graph")
-      (version "4.10.0")
-      (home-page
-       "https://reservoir.lean-lang.org/@leanprover-community/importGraph")
-      (source
-       (origin
-	 (method git-fetch)
-	 (uri (git-reference
-	       (url
-		"https://github.com/leanprover-community/import-graph.git")
-	       (commit (string-append "v" version))))
-	 (file-name (git-file-name name version))
-	 (sha256
-	  (base32
-	   "0h6cz65r51q0l1ss9rizzn0lsmkb8dyf62kj1w4ln6a24yx94kgb"))))
-      (build-system lake-build-system)
-      (inputs (list
-	       `("lean-/batteries" ,lean-batteries)
-	       `("lean-/Cli"       ,lean-cli)))
-      (synopsis "Tool to analyse the import structure of lean projects.")
-      (description "A simple tool to create import graphs of lake packages.")
-      (license license:asl2.0))))
+  (package
+    (name "lean-import-graph")
+    (version "4.10.0")
+    (home-page
+     "https://reservoir.lean-lang.org/@leanprover-community/importGraph")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+	     (url
+	      "https://github.com/leanprover-community/import-graph.git")
+	     (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+	(base32
+	 "0h6cz65r51q0l1ss9rizzn0lsmkb8dyf62kj1w4ln6a24yx94kgb"))))
+    (build-system lake-build-system)
+    (inputs (list
+	     `("lean-/batteries" ,lean-batteries)
+	     `("lean-/Cli"       ,lean-cli)))
+    (synopsis "Tool to analyse the import structure of lean projects.")
+    (description "A simple tool to create import graphs of lake packages.")
+    (license license:asl2.0)))
 
 (define-public lean-proofwidgets
   (package
@@ -241,11 +396,18 @@ search tactic for Lean 4. It is broadly similar to Isabelle's @code{auto}.")
 	(base32
 	 "166hk2av9qw7zawyx80k4j3h6cb0jx3nsza8vzk7n0vi3k5i47hb"))))
     (build-system lake-build-system)
-    (inputs (list `("lean-/batteries" ,lean-batteries)
-		  ;; Needed during build to verify the pkg lock
-		  `("node"            ,node-lts)))
+    (inputs
+     (list `("lean-/batteries" ,lean-batteries)))
     (arguments
      (list
+
+      ;; NOTE: To allow for the output-path splicing in
+      ;;       `patch-lakefile-__dir__-tokens', we need to perform the
+      ;;       build itself in the output path, as build functions
+      ;;       expect the `__dir__' token we replaced to point to the
+      ;;       root of the source tree
+      #:build-in-output? #t
+      
       #:phases
       #~(modify-phases %standard-phases
 	  (add-before 'build 'disable-preferReleaseBuild
@@ -261,8 +423,22 @@ search tactic for Lean 4. It is broadly similar to Isabelle's @code{auto}.")
 	      (substitute* "lakefile.lean"
 		(("^(  preferReleaseBuild := )true" _ var=)
 		 (string-append var= "false")))))
-	  (add-before 'build 'patch-lakefile-__dir__-tokens
+
+	  (add-before 'build 'set-npmCmd-absolute-path
 	    (lambda _
+	      ;; 
+	      ;; NOTE: Prevent the need to propagate nodejs as a
+	      ;;       package dependency by keeping an absolute path
+	      ;;       reference to the `npm' executable in the
+	      ;;       ProofWidgets lakefile
+	      ;; 
+	      (let ((npm #$(file-append node-lts "/bin/npm")))
+		(substitute* "lakefile.lean"
+		  (("^(  if Platform.isWindows then \"npm.cmd\" else )\"npm\"" _ ite)
+		   (string-append ite "\"" npm "\""))))))
+	  
+	  (add-before 'build 'patch-lakefile-__dir__-tokens
+	    (lambda* (#:key lean-version  #:allow-other-keys)
 	      
 	      ;; NOTE: looks like the `__dir__' syntax token in Lake
 	      ;;       elaborates to the current build environment's
@@ -271,28 +447,19 @@ search tactic for Lean 4. It is broadly similar to Isabelle's @code{auto}.")
 	      ;;       introspection tools are available that suit
 	      ;;       our need here, so instead we just patch in
 	      ;;       the literal output path of this package
-
+	      
 	      (substitute* "lakefile.lean"
 		(("__dir__")
 		 (string-append
 		  "("
-		  "System.FilePath.mk " "\"" #$output "\""
+		  "System.FilePath.mk "
+		  "\""
+		  (lake-srcdir->installdir
+		   "."
+		   #:outdir #$output
+		   #:lean-version lean-version)
+		  "\""
 		  ")")))))
-
-	  ;; NOTE: To allow for the output-path splicing in
-	  ;;       `patch-lakefile-__dir__-tokens', we need to
-	  ;;       perform the build itself in the output path, as
-	  ;;       build functions expect the `__dir__' token we
-	  ;;       replaced to point to the root of the source tree
-	  ;;
-	  ;;       As such, delete the `install' phase, copy the
-	  ;;       entire source tree into #$output, and chdir...
-	  ;; 
-	  (delete 'install)
-	  (add-after 'patch-lakefile-__dir__-tokens 'do-build-in-outdir
-	    (lambda _
-	      (begin (copy-recursively "." #$output)
-		     (chdir #$output))))
 	  
 	  (add-before 'build 'inject-cloudrelease-js
 	    (lambda _
@@ -349,19 +516,18 @@ search tactic for Lean 4. It is broadly similar to Isabelle's @code{auto}.")
 	      ("lean-leanprover-community/importGraph"  ,lean-import-graph)
 
 	      ;; inherited Lake dep (from lean-import-graph)
-	      ("lean-/Cli"                              ,lean-cli)
-
-	      ;; Needed for proofwidgets dep
-	      ;; XXX: maybe propagate or abspath the `node' exec in proofwidgets?
-	      ("node" ,node-lts)))
+	      ("lean-/Cli"                              ,lean-cli)))
     (arguments
      (list
       #:build-flags   #~'("--wfail")
       #:build-targets #~'("Mathlib:leanArts"
 			  "Mathlib:static"
 			  "Mathlib:shared"
-			  ;; XXX: need gen-doc4 packaged for this, has
-			  ;;      special build command, maybe add phase?
+			  ;; 
+			  ;; FIXME: add a builder (phase or separate
+			  ;;        package) to handle doc-gen4 facet
+			  ;;        builds for arbitrary lake packages
+			  ;; 
 			  ;; "Mathlib:docs"
 			  )))
     (synopsis "The math library of Lean 4")

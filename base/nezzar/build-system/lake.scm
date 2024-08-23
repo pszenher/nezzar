@@ -54,7 +54,10 @@
           (substitutable? #t)
           (imported-modules %lake-build-system-modules)
           (modules %lake-default-modules)
-          disallowed-references)
+          disallowed-references
+
+	  lean-version
+	  (build-in-output? #f))
 
   (mlet %store-monad ((guile (package->derivation (or guile (default-guile)) system
 						  #:graft? #f)))
@@ -86,7 +89,10 @@
 		       #:patch-shebangs? #$patch-shebangs?
 		       #:strip-binaries? #$strip-binaries?
 		       #:strip-flags #$strip-flags
-		       #:strip-directories #$strip-directories))))
+		       #:strip-directories #$strip-directories
+
+		       #:lean-version #$lean-version
+		       #:build-in-output? #$build-in-output?))))
      #:system system
      #:target #f
      #:graft? #f
@@ -123,7 +129,11 @@
     (outputs outputs)
     (build lake-build)
     (arguments
-     (strip-keyword-arguments private-keywords arguments))))
+     (default-keyword-arguments
+       (strip-keyword-arguments
+	private-keywords arguments)
+       (list
+	#:lean-version (package-version lean))))))
 
 (define lake-build-system
   (build-system
