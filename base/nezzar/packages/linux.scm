@@ -13,6 +13,7 @@
   #:use-module (gnu packages file)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages perl)
+  #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages sqlite))
 
 (define-public util-linux-2.40
@@ -158,7 +159,8 @@
            sqlite
            zlib))
     (native-inputs
-     (list net-base			;for tests
+     (list pkg-config
+	   net-base			;for tests
            perl))
     (home-page "https://www.kernel.org/pub/linux/utils/util-linux/")
     (synopsis "Collection of utilities for the Linux kernel")
