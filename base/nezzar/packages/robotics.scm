@@ -13,6 +13,7 @@
   #:use-module ((guix licenses) #:prefix license:)
 
   #:use-module (guix build-system qt)
+  #:use-module (guix build-system cmake)
   )
 
 (define-public qgroundcontrol
@@ -59,3 +60,30 @@ station (GCS) for UAVs.")
    (license
     (list license:asl2.0
 	  license:gpl3))))
+
+(define-public lastools
+  (package
+   (name "lastools")
+   (version "2.0.3")
+   (home-page "https://rapidlasso.de/product-overview/")
+   (source
+    (origin
+     (method git-fetch)
+     (uri (git-reference
+	   (url "https://github.com/LAStools/LAStools.git")
+	   (commit (string-append "v" version))))
+     (file-name (git-file-name name version))
+     (sha256
+      (base32
+       "05kxyl89qhm8vb0sji9rmjwc83hzhwci4vpkais5089gqqrn69i3"))))
+   (build-system cmake-build-system)
+   (arguments
+    ;; No tests defined
+    '(#:tests? #f))
+   (synopsis "Efficient tools for LiDAR processing")
+   (description "Tools for processing LiDAR data files. The data files are in ASPRS LAS
+format (version 1.0-1.4) or lossless compressed, (but otherwise,
+identical twin), LAZ format.")
+   (license license:lgpl2.1)))
+
+lastools

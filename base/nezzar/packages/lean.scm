@@ -11,7 +11,6 @@
   #:use-module (guix utils)
 
   #:use-module (guix build-system cmake)
-  #:use-module (nezzar build-system lake)
 
   #:use-module (gnu packages base)
   #:use-module (gnu packages commencement) ; for `gcc-toolchain`
@@ -22,6 +21,9 @@
   #:use-module (gnu packages python)
   #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages version-control)
+  #:use-module (gnu packages libevent)	; for `libuv`
+
+  #:use-module (nezzar packages maths)
 
   #:export (make-lean4
 	    make-lean4*))
@@ -36,7 +38,10 @@
 
 (define %lean4-versions
   ;;|----vers----|----------------guix sha256 hash----------------------|-----------git sha1 hash------------------|
-  '(("4.11.0-rc2" "1gc109740sfhm98ggwys7vk7v12ic5pbhh6bm3n5jlxcq1qxbkaj" "0edf1bac392f7e2fe0266b28b51c498306363a84")
+  '(("4.13.0-rc4" "1w0v3q4wix6hfpn7hlsxc82s1gpwfpsxdc3rs5ph16vd42nj5sik" "480d7314a2c499f670609b2c2623a79d36cea760")
+    ("4.12.0"     "1wbj5aac7501bxqbay0z6c1fl7h23rspq2ilbg83glc33p520q9v" "dc2533473114eb8656439ff2b9335209784aa640")
+    ("4.11.0"     "12rwgz8q341mb0i8zja0as6mahqxc90jz0rjcjmjv510vqd1k8p4" "ec3042d94bd11a42430f9e14d39e26b1f880f99b")
+    ;; ("4.11.0-rc2" "1gc109740sfhm98ggwys7vk7v12ic5pbhh6bm3n5jlxcq1qxbkaj" "0edf1bac392f7e2fe0266b28b51c498306363a84")
     ("4.10.0"     "1q0xfg0apzb0dwj71k46w5218hwm2k890cgslwzr4mlyhvrspmcl" "c375e19f6b656fcd594cdca3a38b8578634df8cd")
     ("4.9.1"      "02rfvj6ap55sc38njnl0ax97caa2309d8lwgsxgywkz6zplpjwqb" "1b78cb4836cf626007bd38872956a6fab8910993")
     ("4.9.0"      "0nmalg77p4gfi8x9m936xh4bm8h0hv2fr6cfnss3x9yav6xfhbn2" "8f9843a4a5fe1b0c2f24c74097f296e2818771ee")
@@ -96,7 +101,16 @@ with guix sha256 hash HASH and git commit sha1 GIT-SHA1."
 	     (sha256
 	      (base32 hash))))
     (build-system cmake-build-system)
-    (inputs (list bash-minimal gmp))
+    (inputs `(,bash-minimal
+	      ,gmp
+	      ;; NOTE: `cadical-1.9.5` dependency added in Lean v4.12.0
+	      ,@(splice-when
+		  (version-in? version #:ge "4.12.0")
+		  cadical-1.9)
+	      ;; NOTE: `libuv-1.0.0` dependency added in Lean v4.12.0
+	      ,@(splice-when
+		  (version-in? version #:ge "4.12.0")
+		  libuv)))
     (native-inputs
      (list coreutils
 	   ;; for tests
@@ -305,14 +319,16 @@ git hash associated with tag (string-append \"v\" VERSION)."
 (define-public lean-4.8  (make-lean4*  "4.8.0"))
 (define-public lean-4.9  (make-lean4*  "4.9.1"))
 (define-public lean-4.10 (make-lean4* "4.10.0"))
-(define-public lean-4.11 (make-lean4* "4.11.0-rc2"))
+(define-public lean-4.11 (make-lean4* "4.11.0"))
+(define-public lean-4.12 (make-lean4* "4.12.0"))
+(define-public lean-4.13 (make-lean4* "4.13.0-rc4"))
 
 ;;; NOTE: default lean package pointer, update to match latest when
 ;;;       new stable release versions are added
-(define-public lean-4 lean-4.10)
+(define-public lean-4 lean-4.12)
 
 ;;; NOTE: release-candidate package pointer: update to match latest
 ;;;       when new stable release versions are added
-(define-public lean-4-next lean-4.11)
+(define-public lean-4-next lean-4.13)
 
-lean-4
+lean-4.13

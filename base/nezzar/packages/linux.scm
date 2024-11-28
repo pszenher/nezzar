@@ -3,9 +3,11 @@
 
   #:use-module (guix packages)
   #:use-module (guix download)
+  #:use-module (guix git-download)
   #:use-module (guix gexp)
   #:use-module (guix utils)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system meson)
   #:use-module ((guix licenses) #:prefix license:)
 
   #:use-module (gnu packages admin)
@@ -14,7 +16,14 @@
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
-  #:use-module (gnu packages sqlite))
+  #:use-module (gnu packages sqlite)
+
+  #:use-module (gnu packages cmake)
+  #:use-module (gnu packages python)
+  #:use-module (gnu packages linux)
+  #:use-module (gnu packages tls)
+
+  #:use-module (gnu packages package-management))
 
 (define-public util-linux-2.40
   (package
@@ -174,3 +183,66 @@ block devices, UUIDs, TTYs, and many other tools.")
     ;; explicitly defined license.
     (license (list license:gpl3+ license:gpl2+ license:gpl2 license:lgpl2.0+
                    license:bsd-4 license:public-domain))))
+
+(define-public composefs
+  (package
+   (name "composefs")
+   (version "1.0.6")
+   (source (origin
+            (method git-fetch)
+            (uri (git-reference
+                  (url "https://github.com/containers/composefs.git")
+                  (commit (string-append "v" version))))
+            (file-name (git-file-name name version))
+            (sha256
+             (base32
+              "1q32bifs0rzx1n5b8x1480c4ihpakkilrwx6v19hanz3hkp1i0gm"))))
+   (build-system meson-build-system)
+   (inputs
+    (list openssl
+	  fuse))
+   (native-inputs
+    (list pkg-config
+	  cmake
+	  python))
+   (home-page "https://github.com/containers/composefs")
+   (synopsis "System built upon overlayfs with more integrity features")
+   (description "The composefs project combines several underlying Linux features to
+provide a very flexible mechanism to support read-only mountable
+filesystem trees, stacking on top of an underlying 'lower' Linux
+filesystem.")
+   (license
+    (list license:gpl2+ license:gpl2
+	  license:asl2.0 license:lgpl2.1+))))
+
+(define-public libostree-2024.8
+  (package/inherit
+      libostree
+    (version "2024.8")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/ostreedev/ostree/releases/download/v"
+             (version-major+minor version) "/libostree-" version ".tar.xz"))
+       (sha256
+        (base32 "0grwhrdxip582ja68l9lfg7bxh33kwljxwa9fgzi9wb9cq8nw4z2"))))))
+
+(define-public erofs-utils-1.8
+  (package/inherit
+      erofs-utils
+    (version "1.8.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://git.kernel.org/pub/scm/linux/kernel/git/xiang/erofs-utils.git")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name (package-name erofs-utils) version))
+       (sha256
+        (base32 "1bd2zdj14n2mkszbm1h85m7a8m7h2vqg7r9gfb9w5nc76vi19zjm"))))))
+
+(list
+ composefs
+ libostree-2024.8
+ erofs-utils-1.8)
